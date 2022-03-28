@@ -170,7 +170,6 @@ function map(func, array)
 	return new_array
 end
 
-
 -- Create a new table with each unique element from the input present exactly once,
 -- e.g. {1, 2, 3, 2, 1} -> {1, 2, 3}
 function deduplicate(array)
@@ -186,3 +185,22 @@ function deduplicate(array)
 
 	return res
 end
+
+function GetGroupBanner()
+ 	local path = '';
+ 	if ThemePrefs.Get('NoBannerUseGroupBanner') then
+ 		local current = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong();
+ 		if current then
+ 			if GAMESTATE:IsCourseMode() then
+ 				path = SONGMAN:GetCourseGroupBannerPath(current:GetGroupName());
+ 			else
+ 				path = SONGMAN:GetSongGroupBannerPath(current:GetGroupName());
+ 			end
+ 		end
+ 	end
+ 	return path;
+ end
+
+ function HasGroupBanner()
+ 	return GetGroupBanner() ~= '';
+ end
