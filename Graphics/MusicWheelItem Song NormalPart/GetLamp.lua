@@ -40,7 +40,7 @@ local function GetLamp(song)
 	
 	local profile = PROFILEMAN:GetProfile(player)
 	local high_score_list = profile:GetHighScoreListIfExists(song, steps)
-			
+
 	-- If no scores then just return.
 	if high_score_list == nil or #high_score_list:GetHighScores() == 0 then
 		return nil
@@ -153,8 +153,28 @@ return Def.ActorFrame{
 				return
 			end
 
-			self:scaletoclipped(SL_WideScale(5, 6), 31)
-			self:horizalign(right)
+			self:scaletoclipped(SL_WideScale(13, 21), SL_WideScale(5, 3))
+			self:y(14)
+			self:horizalign(center)
+			if IsUltraWide then
+				if player == PLAYER_1 then
+					self:x(_screen.w/43)
+				elseif player == PLAYER_2 then
+					self:x(_screen.w/15.25)
+				end
+			else
+				if player == PLAYER_1 then
+					self:x(SL_WideScale(10, 17))
+				elseif player == PLAYER_2 then
+					self:x(SL_WideScale(26, 47))
+				end
+			end
+			--TODO use GetX and GetParent to get the Xpos of MusicWheelItem grades (fixes positioning issues in odd aspect ratios; add a name to that Sprite!
+			-- if player == PLAYER_1 then
+			-- 	self:x(GetParent():GetParent():GetChild("Grade"..pn):GetX())
+			-- elseif player == PLAYER_2 then
+			-- 	self:x(GetParent():GetParent():GetChild("Grade"..pn):GetX())
+			-- end
 
 			-- Check ITL File
 			local itl_lamp = nil
@@ -230,16 +250,6 @@ return Def.ActorFrame{
 					end
 				end
 			end
-			
-			-- Align P2's lamps to the right of the grade if both players are joined.
-			if player == PLAYER_2 and GAMESTATE:GetNumSidesJoined() == 2 then
-				-- Ultrawide is quite hard to align, manually scale for it.
-				if IsUltraWide then
-					self:x(SL_WideScale(18, 30) * 2 + SL_WideScale(5, 8) + 40)
-				else
-					self:x(SL_WideScale(18, 30) * 2 + SL_WideScale(5, 8))
-				end
-			end
 		end
 	},
 	
@@ -249,8 +259,8 @@ return Def.ActorFrame{
 		Text="5",
 		InitCommand=function(self)
 			self:visible(false)
-			self:zoom(0.15)
-			self:addy(10)
+			self:zoom(0.12)
+			self:addy(8)
 			self:diffuse(1,1,1,1)
 		end,
 		CountCommand=function(self, param)
