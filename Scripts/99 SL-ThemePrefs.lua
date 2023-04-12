@@ -323,6 +323,12 @@ SL_CustomPrefs.Get = function()
 			},
 			Values 	= { true , false }
 		},
+		ShowCDTitles =
+		{
+			Default = true,
+			Choices = { THEME:GetString("ThemePrefs", "Show"), THEME:GetString("ThemePrefs", "Hide") },
+			Values  = { true , false }
+		},
 	}
 end
 
