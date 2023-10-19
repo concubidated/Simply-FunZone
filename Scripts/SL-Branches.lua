@@ -99,7 +99,16 @@ Branch.AfterScreenSelectColor = function()
 		return "ScreenSelectPlayMode"
 	end
 
-	return "ScreenSelectStyle"
+	return "ScreenSelectPlayMode"
+
+end
+
+Branch.AfterSelectStyle = function()
+	if SL.Global.GameMode == "Casual" then
+		return "ScreenSelectMusicCasual"
+	else
+		return "ScreenSelectPlayMode2"
+	end
 end
 
 Branch.AfterEvaluationStage = function()
