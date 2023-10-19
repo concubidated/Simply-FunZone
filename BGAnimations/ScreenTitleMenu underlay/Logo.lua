@@ -43,13 +43,13 @@ af[#af+1] = Def.Sprite{
 				self:Load(image)
 			end
 			self:zoom(0.7):vertalign(top)
-			self:y(-102):shadowlength(0.75)
+			self:y(-240):shadowlength(0.75)
 		end
 	end,
 }
 
 
-if ThemePrefs.Get("VisualStyle") ~= "SRPG7" then
+if ThemePrefs.Get("VisualStyle") ~= "FunZone" then
 	-- decorative arrows for current game (dance, pump, techno, etc.)
 	af[#af+1] = LoadActor(resolved_path)..{
 		InitCommand=function(self)
