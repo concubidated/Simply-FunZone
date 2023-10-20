@@ -100,12 +100,12 @@ local t = Def.ActorFrame {
 			if PREFSMAN:GetPreference("EventMode") then
 				SCREENMAN:GetTopScreen():SetNextScreenName( Branch.SSMCancel() ):StartTransitioningScreen("SM_GoToNextScreen")
 			else
-				if SL.Global.Stages.PlayedThisGame == 0 then
+				-- if SL.Global.Stages.PlayedThisGame == 0 then
 					SL.Global.GameMode = "ITG"
 					SetGameModePreferences()
 					THEME:ReloadMetrics()
 					SCREENMAN:GetTopScreen():SetNextScreenName("ScreenReloadSSM"):StartTransitioningScreen("SM_GoToNextScreen")
-				end
+				-- end
 			end
 		end
 		if params.Name == "CancelSingleSong" then

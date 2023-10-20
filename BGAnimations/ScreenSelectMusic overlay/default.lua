@@ -1,3 +1,13 @@
+local t = {
+	"In The Groove 2/Birdie",
+	"In The Groove 3/Bumble Bee",
+	"In The Groove 3/Dance Vibrations",
+	"In The Groove 3/Coming Out",
+};
+
+local s = SONGMAN:FindSong( t[ math.random(1,table.getn(t)) ] )
+GAMESTATE:SetPreferredSong( s )
+
 local af = Def.ActorFrame{
 	-- GameplayReloadCheck is a kludgy global variable used in ScreenGameplay in.lua to check
 	-- if ScreenGameplay is being entered "properly" or being reloaded by a scripted mod-chart.
