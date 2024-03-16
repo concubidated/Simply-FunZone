@@ -7,7 +7,7 @@ local player = ...
 local pn = ToEnumShortString(player)
 
 -- Height and width of the density graph.
-local height = 64
+local height = GAMESTATE:GetNumPlayersEnabled() == 2 and 46.75 or 64
 local width = _screen.w/3.195
 
 local marquee_index
@@ -30,17 +30,23 @@ local showPatternInfo = false
 local af = Def.ActorFrame{
 	InitCommand=function(self)
 		self:visible( GAMESTATE:IsHumanPlayer(player) )
-		self:xy(_screen.cx-293, _screen.cy+56)
+		self:x(_screen.cx-293)
+		if GAMESTATE:GetNumPlayersEnabled() == 2 then
+			self:y(_screen.cy+98.5)
+		else
+			self:y(_screen.cy+56)
+		end
 
 		if player == PLAYER_2 then
 			self:x(_screen.cx+293)
 		end
 	end,
-	PlayerJoinedMessageCommand=function(self, params)
-		if params.Player == player then
-			self:visible(true)
-		end
-	end,
+	--since we're now resetting ScreenSelectMusicWide when a new player joins, we don't want this animation to play
+	-- PlayerJoinedMessageCommand=function(self, params)
+	-- 	if params.Player == player then
+	-- 		self:visible(true)
+	-- 	end
+	-- end,
 	PlayerUnjoinedMessageCommand=function(self, params)
 		self:x(_screen.cx-182)
 		self:y(_screen.cy+62)
@@ -153,7 +159,7 @@ af2[#af2+1] = Def.ActorFrame{
  			local textZoom = 0.65
 			--let's give some padding so the text doesn't touch the outer edges of this box
 			self:maxwidth(width/textZoom-10):zoom(textZoom)
-			self:addy(-6)
+			self:addy(-7)
 		end,
 		HideCommand=function(self)
 			self:settext("")
@@ -201,7 +207,11 @@ af2[#af2+1] = Def.ActorFrame{
 af2[#af2+1] = Def.ActorFrame{
 	Name="PatternInfo",
 	InitCommand=function(self)
-		self:addy(90)
+		if GAMESTATE:GetNumPlayersEnabled() == 2 then
+			self:addy(72)
+		else
+			self:addy(90)
+		end
 	end,
 }
 

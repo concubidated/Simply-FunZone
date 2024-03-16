@@ -50,11 +50,12 @@ return Def.ActorFrame{
 	CurrentSongChangedMessageCommand=function(self) self:queuecommand("Reset") end,
 	CurrentCourseChangedMessageCommand=function(self) self:queuecommand("Reset") end,
 
-	PlayerJoinedMessageCommand=function(self, params)
-		if params.Player == player then
-			self:queuecommand("Appear" .. pn)
-		end
-	end,
+	--since we're now resetting ScreenSelectMusicWide when a new player joins, we don't want this animation to play
+	-- PlayerJoinedMessageCommand=function(self, params)
+	-- 	if params.Player == player then
+	-- 		self:queuecommand("Appear" .. pn)
+	-- 	end
+	-- end,
 
 	-- Simply Love doesn't support player unjoining (that I'm aware of!) but this
 	-- animation is left here as a reminder to a future me to maybe look into it.
@@ -70,8 +71,12 @@ return Def.ActorFrame{
 
 	InitCommand=function(self)
 		self:visible( false ):halign( p )
-		self:y(_screen.cy - 24)
-		-- P1 and P2 actorframe coords differ because the background element gets rotated for P2
+		if GAMESTATE:GetNumPlayersEnabled() == 2 then
+			self:y(_screen.cy + 27)
+		else
+			self:y(_screen.cy - 24)
+		end
+
 		if player == PLAYER_1 then
 			self:x(_screen.cx-452.5)
 		else
@@ -120,6 +125,7 @@ return Def.ActorFrame{
 			}
 
 			self:SetDrawState({Mode="DrawMode_Triangles"}):SetVertices(StepCreditBGVerts)
+
 			if player == PLAYER_1 then
 				self:xy(82,40)
 			else

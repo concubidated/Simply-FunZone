@@ -16,9 +16,11 @@ local n = player==PLAYER_1 and "1" or "2"
 local NoteFieldIsCentered = (GetNotefieldX(player) == _screen.cx)
 local NumEntries = 5
 
-local border = 5
+local border = 3
 local width = 162
-local height = 80
+local height = 84
+
+local zoom_x = GAMESTATE:GetNumPlayersEnabled() == 2 and 0.885 or 1
 
 local cur_style = 0
 local num_styles = 4
@@ -356,11 +358,22 @@ end
 local af = Def.ActorFrame{
 	Name="ScoreBox"..pn,
 	InitCommand=function(self)
-		self:y(_screen.cy * .65):zoom(1)
-		if pn == "P1" then
-			self:x(_screen.cx-294)
+		self:zoom(1)
+		self:zoomx(zoom_x)
+		if GAMESTATE:GetNumPlayersEnabled() == 2 then
+			self:y(_screen.cy * .737)
+			if player == PLAYER_1 then
+				self:x(_screen.cx-347)
+			else
+				self:x(_screen.cx+347)
+			end
 		else
-			self:x(_screen.cx+294)
+			self:y(_screen.cy * .64)
+			if player == PLAYER_1 then
+				self:x(_screen.cx-294)
+			else
+				self:x(_screen.cx+294)
+			end
 		end
 		self.isFirst = true
 	end,

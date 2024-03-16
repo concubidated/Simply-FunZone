@@ -3,10 +3,11 @@ local machine_profile = PROFILEMAN:GetMachineProfile()
 
 -- the height of the footer is defined in ./Graphics/_footer.lua, but we'll
 -- use it here when calculating where to position the PaneDisplay
-local footer_height = 32
+local footer_height = GAMESTATE:GetNumPlayersEnabled() == 2 and 0 or 32
 
 -- height of the PaneDisplay in pixels
-local pane_height = 60
+-- slight adjustment here for 2 Player view, coupled with DensityGraph height adjustment
+local pane_height = GAMESTATE:GetNumPlayersEnabled() == 2 and 59 or 60
 
 local text_zoom = 0.7
 
@@ -412,14 +413,15 @@ for player in ivalues(PlayerNumber) do
 		self:y(_screen.h - footer_height - pane_height)
 	end
 
-	af2.PlayerJoinedMessageCommand=function(self, params)
-		if player==params.Player then
-			-- ensure BackgroundQuad is colored before it is made visible
-			self:GetChild("BackgroundQuad"):playcommand("Set")
-			self:visible(true)
-				:playcommand("Update")
-		end
-	end
+	-- since we're now resetting ScreenSelectMusicWide when a new player joins, we don't want this animation to play
+	-- af2.PlayerJoinedMessageCommand=function(self, params)
+	-- 	if player==params.Player then
+	-- 		-- ensure BackgroundQuad is colored before it is made visible
+	-- 		self:GetChild("BackgroundQuad"):playcommand("Set")
+	-- 		self:visible(true)
+	-- 			:playcommand("Update")
+	-- 	end
+	-- end
 
 	af2.PlayerUnjoinedMessageCommand=function(self, params)
 		if player==params.Player then

@@ -30,6 +30,10 @@ local af = Def.ActorFrame{
 			LoadGuest(params.Player)
 		end
 		ApplyMods(params.Player)
+		--Joining a new player to ScreenSelectMusicWide is going to be janky because the best way to go about it would be to fade out the first joined player's UI
+		--We'll have to then deal with the performance hit associated with having the UI be duplicated but not visible (because hidden elements are still loaded?)
+		--The best option, I think, is to reload the screen entirely
+		SCREENMAN:GetTopScreen():SetNextScreenName("ScreenSelectMusicWide"):StartTransitioningScreen("SM_GoToNextScreen")		
 	end,
 
 	-- ---------------------------------------------------
@@ -44,6 +48,8 @@ local af = Def.ActorFrame{
 	-- ---------------------------------------------------
 	-- next, load visual elements; the order of these matters
 	-- i.e. content in PerPlayer/Over needs to draw on top of content from PerPlayer/Under
+
+	LoadActor("./NotefieldPreview.lua"),
 
 	-- number of steps, jumps, holds, etc., and high scores associated with the current stepchart
 	LoadActor("./PaneDisplay.lua"),
@@ -76,6 +82,8 @@ local af = Def.ActorFrame{
 	LoadActor("./EscapeFromEventMode.lua"),
 
 	LoadActor("./SongSearch/default.lua"),
+
+	LoadActor("./footer.lua"),
 }
 
 return af

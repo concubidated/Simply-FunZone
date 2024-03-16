@@ -9,11 +9,20 @@ local currentDifficulty = ""
 
 local af = Def.ActorFrame{
 	InitCommand=function(self)
-		self:y(_screen.cy*0.3)
-		if player == PLAYER_1 then 
-			self:x(_screen.cx-294)
+		if GAMESTATE:GetNumPlayersEnabled() == 2 then
+			self:y(_screen.cy * 0.27)
+			if player == PLAYER_1 then
+				self:x(_screen.cx-347)
+			else
+				self:x(_screen.cx+347)
+			end
 		else
-			self:x(_screen.cx+294)
+			self:y(_screen.cy * 0.3)
+			if player == PLAYER_1 then
+				self:x(_screen.cx-294)
+			else
+				self:x(_screen.cx+294)
+			end
 		end
 	end,
 	CurrentSongChangedMessageCommand=function(self)
@@ -28,7 +37,6 @@ local af = Def.ActorFrame{
 		end
 	end,
 	PlayerUnjoinedMessageCommand=function(self, params)
-		self:x(_screen.cx*1.77)
 		if params.Player == player then
 			self:visible(false)
 		end
@@ -57,7 +65,11 @@ difficultyNames = {
 
 af2 = Def.ActorFrame {
 	InitCommand=function(self)
-		self:zoom(0.45)
+		if GAMESTATE:GetNumPlayersEnabled() == 2 then
+			self:zoom(0.34)
+		else
+			self:zoom(0.4)
+		end
 	end
 }
 
@@ -145,7 +157,7 @@ local colorTable = (style == "SRPG6") and SL.SRPG6.Colors or SL.DecorativeColors
 -- Border Quad
 af2[#af2+1] = Def.Quad {
 	InitCommand=function(self)
-		self:zoomto(height+2,width+2)
+		self:zoomto(height+10,width+10)
 		self:diffuse(color(colorTable[SL.Global.ActiveColorIndex]))
 	end
 }
