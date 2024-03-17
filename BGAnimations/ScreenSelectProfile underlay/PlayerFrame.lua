@@ -47,7 +47,10 @@ if SL.Global.FastProfileSwitchInProgress then
 			break
 		end
 	end
+<<<<<<< HEAD
 
+=======
+>>>>>>> 4406272e (Initialize profile data to the DefaultLocalProfile when in use.)
 	-- If we haven't found a matching profile looking in profile_data, this has to
 	-- be [GUEST]
 	pos = pos or 0
@@ -180,8 +183,9 @@ return Def.ActorFrame{
 			end
 
 			scroller.focus_pos = 5
-
-			scroller:set_info_set(scroller_data, 0)
+			-- initialize to the guest profile in case we don't have a default profile
+			scroller:set_info_set(scroller_data, 1)
+			scroller:scroll_by_amount(-1)
 
 			-- Scroll to the current player profile, if any
 			if pos then
@@ -192,17 +196,13 @@ return Def.ActorFrame{
 				if PREFSMAN:GetPreference("DefaultLocalProfileID"..pn) ~= "" then
 					local default_profile_id = PREFSMAN:GetPreference("DefaultLocalProfileID"..pn)
 					local profile_dir = PROFILEMAN:LocalProfileIDToDir(default_profile_id)
-					
 					for i, profile_item in ipairs(scroller_data) do
 						if profile_item.dir == profile_dir then
-							scroller:set_info_set(scroller_data, 1)
-							scroller:scroll_by_amount(i-5)
+							scroller:scroll_by_amount(i-4)
+							initial_data = profile_data[i-4]
 							break
 						end
 					end
-				else
-					scroller:set_info_set(scroller_data, 1)
-					scroller:scroll_by_amount(-1 )
 				end
 			end
 		end,

@@ -7,17 +7,6 @@ for judgment_filename in ivalues( GetJudgmentGraphics() ) do
 			InitCommand=function(self)
 				self:visible(false):animate(true)
 				local num_frames = self:GetNumStates()
-
-				for i,window in ipairs(SL.Global.ActiveModifiers.TimingWindows) do
-					if window then
-						if num_frames == 12 then
-							self:setstate((i-1)*2)
-						else
-							self:setstate(i-1)
-						end
-						break
-					end
-				end
 			end
 		}
 	else
