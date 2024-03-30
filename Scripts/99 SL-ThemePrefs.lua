@@ -16,8 +16,9 @@ end
 
 SL_CustomPrefs.Get = function()
 	 -- emojis are our lingua franca for the 21st century
-	local visualStyleChoices = { "🏰","❤", "↖", "🐻", "🦆", "😺", "🎃", "🌈", "⭐", "🤔" }
-	local visualStyleValues  = { "FunZone", "Hearts", "Arrows", "Bears", "Ducks", "Cats", "Spooky", "Gay", "Stars", "Thonk" }
+
+	local visualStyleChoices = { "🏰", "❤", "↖", "🐻", "🦆", "😺", "🎃", "🌈", "⭐", "🤔", "🌀" }
+	local visualStyleValues  = { "FunZone", "Hearts", "Arrows", "Bears", "Ducks", "Cats", "Spooky", "Gay", "Stars", "Thonk", "Technique" }
 
 	local year = Year()
 	local month = MonthOfYear()+1
@@ -73,9 +74,8 @@ SL_CustomPrefs.Get = function()
 			Choices = {
 				THEME:GetString("ScreenSelectPlayMode", "Casual"),
 				THEME:GetString("ScreenSelectPlayMode", "ITG"),
-				THEME:GetString("ScreenSelectPlayMode", "FA+"),
 			},
-			Values = { "Casual", "ITG", "FA+" }
+			Values = { "Casual", "ITG" }
 		},
 		AutoStyle =
 		{
@@ -90,7 +90,7 @@ SL_CustomPrefs.Get = function()
 		},
 		VisualStyle =
 		{
-			Default = "Hearts",
+			Default = "Technique",
 			Choices = visualStyleChoices,
 			Values  = visualStyleValues
 		},
@@ -119,6 +119,12 @@ SL_CustomPrefs.Get = function()
 			Default = false,
 			Choices =  { THEME:GetString("ThemePrefs","Yes"), THEME:GetString("ThemePrefs", "No") },
 			Values	= { true, false }
+		},
+		SampleMusicLoops =
+		{
+			Default = true,
+			Choices = { THEME:GetString("ThemePrefs","Yes"), THEME:GetString("ThemePrefs", "No") },
+			Values  = { true, false }
 		},
 		-- - - - - - - - - - - - - - - - - - - -
 		-- SimplyLoveColor saves the theme color for the next time
@@ -247,6 +253,28 @@ SL_CustomPrefs.Get = function()
 		LastActiveEvent =
 		{
 			Default = "",
+		},
+		-- - - - - - - - - - - - - - - - - - - -
+		EnableTournamentMode = {
+			Default = false,
+			Choices =  { THEME:GetString("ThemePrefs","Yes"), THEME:GetString("ThemePrefs", "No") },
+			Values  = { true, false }
+		},
+
+		ScoringSystem = {
+			Default = "EX",
+			Choices  = { "EX", "ITG" }
+		},
+
+		StepStats = {
+			Default = "Show",
+			Choices =  { "Show", "Hide" },
+		},
+
+		EnforceNoCmod = {
+			Default = true,
+			Choices =  { THEME:GetString("ThemePrefs","Yes"), THEME:GetString("ThemePrefs", "No") },
+			Values  = { true, false }
 		},
 	}
 end
