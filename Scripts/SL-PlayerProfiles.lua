@@ -23,6 +23,8 @@ local permitted_profile_settings = {
 	BackgroundFilter = "string",
 	NoteFieldOffsetX = "number",
 	NoteFieldOffsetY = "number",
+	VisualDelay = "0ms",
+
 
 	----------------------------------
 	-- "Advanced Modifiers"

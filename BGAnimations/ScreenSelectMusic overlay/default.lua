@@ -1,12 +1,22 @@
-local t = {
-	"In The Groove 2/Birdie",
-	"In The Groove 3/Bumble Bee",
-	"In The Groove 3/Dance Vibrations",
-	"In The Groove 3/Coming Out",
-};
+if GAMESTATE:GetCurrentStageIndex() == 0 then
+	local memoryCardInUse = false
+	for player in ivalues(GAMESTATE:GetHumanPlayers()) do
+		if MEMCARDMAN:GetCardState(player) == "MemoryCardState_ready" then
+			memoryCardInUse = true
+		end
+	end
 
-local s = SONGMAN:FindSong( t[ math.random(1,table.getn(t)) ] )
-GAMESTATE:SetPreferredSong( s )
+	if not memoryCardInUse then
+		local t = {
+			"In The Groove 2/Birdie",
+			"In The Groove 2/Bumble Bee",
+			"In The Groove 3/Dance Vibrations",
+			"In The Groove 3/Coming Out",
+		};
+		local s = SONGMAN:FindSong( t[ math.random(1,table.getn(t)) ] )
+		GAMESTATE:SetPreferredSong( s )
+	end
+end
 
 local af = Def.ActorFrame{
 	-- GameplayReloadCheck is a kludgy global variable used in ScreenGameplay in.lua to check
