@@ -1,12 +1,18 @@
 if GAMESTATE:GetCurrentStageIndex() == 0 then
 	local memoryCardInUse = false
-	for player in ivalues(GAMESTATE:GetHumanPlayers()) do
-		if MEMCARDMAN:GetCardState(player) == "MemoryCardState_ready" then
+	local lastPlayed = false
+	for i,pn in ipairs(GAMESTATE:GetHumanPlayers()) do
+		if MEMCARDMAN:GetCardState(pn) == "MemoryCardState_ready" then
 			memoryCardInUse = true
+			local prof = PROFILEMAN:GetProfile(pn)
+			song = prof:GetLastPlayedSong()
+			if song ~= nil then
+				lastPlayed = true
+			end
 		end
 	end
 
-	if not memoryCardInUse then
+	if not memoryCardInUse or not lastPlayed then
 		local t = {
 			"In The Groove 2/Birdie",
 			"In The Groove 2/Bumble Bee",
