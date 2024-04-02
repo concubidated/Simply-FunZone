@@ -7,6 +7,10 @@ local NumPlayers = #GAMESTATE:GetHumanPlayers()
 local GraphWidth  = THEME:GetMetric("GraphDisplay", "BodyWidth")
 local GraphHeight = THEME:GetMetric("GraphDisplay", "BodyHeight")
 
+local my_peak = GAMESTATE:Env()[pn.."PeakNPS"]
+local streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(pn)
+local totalMeasures = streamMeasures + breakMeasures
+
 local af = Def.ActorFrame{
 	InitCommand=function(self)
 		self:y(_screen.cy + 124)
@@ -114,7 +118,7 @@ if storage.DeathSecond ~= nil then
 		InitCommand=function(self)
 			self:zoom(1.25)
 			-- Start at the start of the graph
-			self:addx(-GraphWidth / 2):addy(GraphHeight - 10)
+			self:addx(-GraphWidth / 2):addy(GraphHeight - 19)
 			-- Move to where the player failed
 			self:addx(GraphWidth * graphPercentage)
 		end,

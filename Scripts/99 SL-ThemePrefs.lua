@@ -250,6 +250,22 @@ SL_CustomPrefs.Get = function()
 			Values  = { 0, 1, 2 }
 		},
 		-- - - - - - - - - - - - - - - - - - - -
+		-- Verbose Song VerboseSongFolder
+		-- true = song folder, false = only group name
+		VerboseSongFolder = {
+			Default = false,
+			Choices =  { THEME:GetString("ThemePrefs","Yes"), THEME:GetString("ThemePrefs", "No") },
+			Values 	= { true , false }
+		},
+
+		-- - - - - - - - - - - - - - - - - - - -
+ 		HighscoreCharLimit = {
+ 			Default = 9,
+ 			Choices = { 4, 5, 6, 7, 8, 9 },
+ 			Values  = { 4, 5, 6, 7, 8, 9 }
+ 		},
+
+		-- - - - - - - - - - - - - - - - - - - -
 		LastActiveEvent =
 		{
 			Default = "",
@@ -275,6 +291,21 @@ SL_CustomPrefs.Get = function()
 			Default = true,
 			Choices =  { THEME:GetString("ThemePrefs","Yes"), THEME:GetString("ThemePrefs", "No") },
 			Values  = { true, false }
+		},
+
+		NoBannerUseGroupBanner = {
+			Default = true,
+			Choices = {
+				THEME:GetString("ThemePrefs", "UseGroupBanner"),
+				THEME:GetString("ThemePrefs", "NoUseGroupBanner")
+			},
+			Values 	= { true , false }
+		},
+		ShowCDTitles =
+		{
+			Default = true,
+			Choices = { THEME:GetString("ThemePrefs", "Show"), THEME:GetString("ThemePrefs", "Hide") },
+			Values  = { true , false }
 		},
 	}
 end
