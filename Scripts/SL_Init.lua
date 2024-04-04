@@ -4,8 +4,8 @@ local PlayerDefaults = {
 	__index = {
 		initialize = function(self)
 			self.ActiveModifiers = {
-				SpeedModType = "X",
-				SpeedMod = 1.00,
+				SpeedModType = "M",
+				SpeedMod = 300,
 				JudgmentGraphic = "Love 2x6 (doubleres).png",
 				ComboFont = "Wendy",
 				HoldJudgment = "Love 1x2 (doubleres).png",
@@ -48,7 +48,7 @@ local PlayerDefaults = {
 
 				NoteFieldOffsetX = 0,
 				NoteFieldOffsetY = 0,
-				Vocalization = "Random",
+				Vocalization = "None",
 			}
 			-- TODO(teejusb): Rename "Streams" as the data contains more information than that.
 			self.Streams = {

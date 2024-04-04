@@ -1,3 +1,29 @@
+if GAMESTATE:GetCurrentStageIndex() == 0 then
+        local memoryCardInUse = false
+        local lastPlayed = false
+        for i,pn in ipairs(GAMESTATE:GetHumanPlayers()) do
+                if MEMCARDMAN:GetCardState(pn) == "MemoryCardState_ready" then
+                        memoryCardInUse = true
+                        local prof = PROFILEMAN:GetProfile(pn)
+                        song = prof:GetLastPlayedSong()
+                        if song ~= nil then
+                                lastPlayed = true
+                        end
+                end
+        end
+
+        if not memoryCardInUse or not lastPlayed then
+                local t = {
+                        "In The Groove 2/Birdie",
+                        "In The Groove 2/Bumble Bee",
+                        "In The Groove 3/Dance Vibrations",
+                        "In The Groove 3/Coming Out",
+                };
+                local s = SONGMAN:FindSong( t[ math.random(1,table.getn(t)) ] )
+                GAMESTATE:SetPreferredSong( s )
+        end
+end
+
 local af = Def.ActorFrame{
 	-- GameplayReloadCheck is a kludgy global variable used in ScreenGameplay in.lua to check
 	-- if ScreenGameplay is being entered "properly" or being reloaded by a scripted mod-chart.

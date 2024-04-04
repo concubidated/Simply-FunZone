@@ -111,7 +111,7 @@ Branch.AfterSelectStyle = function()
 	if SL.Global.GameMode == "Casual" then
 		return "ScreenSelectMusicCasual"
 	else
-		return "ScreenSelectPlayMode2"
+		return "ScreenProfileLoad"
 	end
 end
 
