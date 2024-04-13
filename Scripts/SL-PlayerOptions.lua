@@ -470,7 +470,7 @@ local Overrides = {
 				return { "ShowFaPlusWindow" }
 			end
 
-			return { "ShowFaPlusWindow", "ShowEXScore", "ShowFaPlusPane", "SmallerWhite" }
+			return { "ShowFaPlusWindow", "ShowEXScore", "ShowFaPlusPane", "SplitWhites", "SmallerWhite" }
 		end,
 		LoadSelections = function(self, list, pn)
 			local mods = SL[ToEnumShortString(pn)].ActiveModifiers
@@ -600,6 +600,7 @@ local Overrides = {
 	},
 	-------------------------------------------------------------------------
 	StepStatsExtra = {
+		LayoutType = "ShowOneInRow",
 		Choices = function()
 			local choices = { "None", "ErrorStats" }
 			local GIFdir = THEME:GetCurrentThemeDirectory() .. "BGAnimations/ScreenGameplay underlay/PerPlayer/StepStatistics/GIFs/"
@@ -628,7 +629,15 @@ local Overrides = {
 	},
 	-------------------------------------------------------------------------
 	ActionOnMissedTarget = {
-		Values = { "Nothing", "DimSScore", "Fail", "Restart" },
+		Values = function()
+			local vals = {}
+			if PREFSMAN:GetPreference("EventMode") then
+				vals = { "Nothing", "DimSScore", "Fail", "Restart" }
+			else
+				vals = { "Nothing", "DimSScore" }
+			end
+			return vals
+		end
 	},
 	-------------------------------------------------------------------------
 	MiniIndicator = {
@@ -642,28 +651,9 @@ local Overrides = {
 	GameplayExtras = {
 		SelectType = "SelectMultiple",
 		Values = function()
-			-- GameplayExtras will be presented as a single OptionRow when WideScreen
-			local vals = { "ColumnFlashOnMiss", "Pacemaker", "NPSGraphAtTop" }
-
-			-- if not WideScreen (traditional DDR cabinets running at 640x480)
-			-- remove the last two choices to be appended an additional OptionRow (GameplayExtrasB below).
-			if not IsUsingWideScreen() then
-				table.remove(vals, 4)
-			end
+			local vals = { "Pacemaker", "NPSGraphAtTop", "ColumnCues", "ColumnCountdown" }
 			return vals
 		end,
-	},
-	GameplayExtrasB = {
-		SelectType = "SelectMultiple",
-		Values = function()
-			local vals = {}
-			if IsUsingWideScreen() then
-				vals = { "JudgmentTilt", "ColumnCues", "ColumnCountdown" }
-			else
-				vals = { "JudgmentTilt", "ColumnCues", "ColumnCountdown", "ShowHeldMiss" }
-			end
-			return vals
-		end
 	},
 	-------------------------------------------------------------------------
 	ResultsExtras = {
@@ -994,7 +984,7 @@ local Overrides = {
 	-------------------------------------------------------------------------
 	ExtraAesthetics = {
 		SelectType = "SelectMultiple",
-		Values = { "JudgmentBack", "ErrorMSDisplay", "GhostFault", "SplitWhites", "BreakUI" }
+		Values = { "JudgmentTilt", "ColumnFlashOnMiss", "JudgmentBack", "ErrorMSDisplay", "GhostFault", "BreakUI" }
 	},
 	-------------------------------------------------------------------------
 	Vocalization = {
