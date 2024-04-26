@@ -447,7 +447,7 @@ ValidForGrooveStats = function(player)
 	-- AutoPlay/AutoplayCPU is not allowed
 	valid[12] = IsHumanPlayer(player)
 
-	local minTNSToScoreNores = ToEnumShortString(PREFSMAN:GetPreference("MinTNSToScoreNotes"))
+	local minTNSToScoreNores = "TNS_W3"
 
 	if SL.Global.GameMode == "ITG" then
 		-- The cut off for rehits is only allowed to be set to Greats (W3) or worse.
