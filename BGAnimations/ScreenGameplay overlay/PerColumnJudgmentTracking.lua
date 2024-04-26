@@ -69,9 +69,9 @@ return Def.Actor{
 					end
 					judgments[col][tns] = judgments[col][tns] + 1
 
-					if tnt ~= "Lift" and tns == "Miss" and tapnote:GetTapNoteResult():GetHeld() then
-						judgments[col].MissBecauseHeld = judgments[col].MissBecauseHeld + 1
-					end
+					--if tnt ~= "Lift" and tns == "Miss" and tapnote:GetTapNoteResult():GetHeld() then
+					--	judgments[col].MissBecauseHeld = judgments[col].MissBecauseHeld + 1
+					--end
 				end
 			end
 		end
