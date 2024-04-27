@@ -247,7 +247,6 @@ local t = Def.ActorFrame {
 			{"SortBy", "Genre"},
 			{"SortBy", "BPM"},
 			{"SortBy", "Length"},
-			{"SortBy", "Meter"},
 		}
 		table.insert(wheel_options, {"SortBy", "Popularity"})
 		table.insert(wheel_options, {"SortBy", "Recent"})
@@ -302,8 +301,6 @@ local t = Def.ActorFrame {
 			end
 		end
 
-		table.insert(wheel_options, {"TakeABreather", "LoadNewSongs"})
-
 		-- Only display the View Downloads option if we're connected to
 		-- GrooveStats and Auto-Downloads are enabled.
 		if SL.GrooveStats.IsConnected and ThemePrefs.Get("AutoDownloadUnlocks") then
@@ -323,10 +320,6 @@ local t = Def.ActorFrame {
 				-- Only display this option if keyboard features are enabled
 				table.insert(wheel_options, {"WhereforeArtThou", "SongSearch"})
 			end
-		end
-
-		if ThemePrefs.Get("AllowScreenSelectProfile") then
-			table.insert(wheel_options, {"NextPlease", "SwitchProfile"})
 		end
 
 		if GAMESTATE:GetCurrentSong() ~= nil then
