@@ -471,7 +471,7 @@ for player in ivalues(PlayerNumber) do
 		SetDefaultCommand=function(self)
 			local SongOrCourse, StepsOrTrail = GetSongAndSteps(player)
 			local machineScore = GetScoreFromProfile(machine_profile, SongOrCourse, StepsOrTrail)
-			self:settext(machineScore and machineScore:GetName() or "----")
+			-- self:settext(machineScore and machineScore:GetName() or "----")
 			DiffuseEmojis(self:ClearAttributes())
 		end
 	}

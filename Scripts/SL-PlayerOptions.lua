@@ -699,10 +699,6 @@ local Overrides = {
 
 			-- First determine the set of actual enabled windows.
 			local windows = {true,true,true,true,true}
-			local disabledWindows = playeroptions:GetDisabledTimingWindows()
-			for w in ivalues(disabledWindows) do
-				windows[tonumber(ToEnumShortString(w):sub(-1))] = false
-			end
 
 			-- Compare them to any of our available selections
 			local matched = false
@@ -724,7 +720,6 @@ local Overrides = {
 			-- to a known value (all windows enabled).
 			if not matched then
 				mods.TimingWindows = {true,true,true,true,true}
-				playeroptions:ResetDisabledTimingWindows()
 				list[1] = true
 			end
 			return list
@@ -734,12 +729,6 @@ local Overrides = {
 			for i=1,#list do
 				if list[i] then
 					mods.TimingWindows = self.Values[i]
-					playeroptions:ResetDisabledTimingWindows()
-					for i,enabled in ipairs(mods.TimingWindows) do
-						if not enabled then
-							playeroptions:DisableTimingWindow("TimingWindow_W"..i)
-						end
-					end
 				end
 			end
 		end
