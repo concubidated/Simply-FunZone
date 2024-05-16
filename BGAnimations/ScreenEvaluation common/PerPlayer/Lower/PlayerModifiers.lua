@@ -42,13 +42,15 @@ return Def.ActorFrame{
 			if not GAMESTATE:IsCourseMode() then self:queuecommand("Animate") end
 		end,
 		AnimateCommand=function(self)
-			self:sleep(2):linear(0.2):diffusealpha(0)
+			if not GAMESTATE:GetCurrentSteps(pn):IsAutogen() then
+				self:sleep(2):linear(0.2):diffusealpha(0)
+			end
 		end,
 	},
 	-- Breakdown
 	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		Text="",
-		Condition=not GAMESTATE:IsCourseMode(),
+		Condition=not GAMESTATE:IsCourseMode() and not GAMESTATE:GetCurrentSteps(player):IsAutogen(),
 		InitCommand=function(self)
 			if #GAMESTATE:GetHumanPlayers()==1 then
 				self:addx(GraphWidth * 0.2541):maxwidth(GraphWidth+250)
@@ -67,7 +69,7 @@ return Def.ActorFrame{
 	-- Density Info
 	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		Text="",
-		Condition=not GAMESTATE:IsCourseMode(),
+		Condition=not GAMESTATE:IsCourseMode() and not GAMESTATE:GetCurrentSteps(player):IsAutogen(),
 		InitCommand=function(self)
 			if #GAMESTATE:GetHumanPlayers()==1 then
 				self:addx(GraphWidth * 0.2541):maxwidth(GraphWidth+250)

@@ -206,6 +206,10 @@ return Def.ActorFrame{
 						end
 						self:settext(fulldesc)
 						DiffuseEmojis(self, fulldesc)
+						if GAMESTATE:GetCurrentSteps(player):IsAutogen() then
+							self:settext(THEME:GetString("ScreenSelectMusic", "AUTOGEN"))
+							DiffuseEmojis(self)
+						end
 					else
 						-- no credit information was specified in the simfile for this stepchart, so just set to an empty string
 						self:settext("")
@@ -254,6 +258,10 @@ return Def.ActorFrame{
 							end
 							self:settext(fulldesc)
 							DiffuseEmojis(self, fulldesc)
+							if GAMESTATE:GetCurrentSteps(player):IsAutogen() then
+								self:settext(THEME:GetString("ScreenSelectMusic", "AUTOGEN"))
+								DiffuseEmojis(self)
+							end
 						else
 							-- no credit information was specified in the simfile for this stepchart, so just set to an empty string
 							self:settext("")
