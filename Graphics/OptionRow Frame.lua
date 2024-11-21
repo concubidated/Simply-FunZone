@@ -126,7 +126,7 @@ for player in ivalues( GAMESTATE:GetHumanPlayers() ) do
 
 			if FindInTable(optrow:GetName(), rows_with_proxies) then
 				-- if this OptionRow needs an ActorProxy for preview purposes, set the necessary parameters
-				self:x(proxy_offset + (player==PLAYER_1 and WideScale(20, 0) or WideScale(220, 240)))
+				self:x(proxy_offset + (player==PLAYER_1 and WideScale(29, 30) or WideScale(229, 270)))
 				self:zoom(0.4)
 			else
 				-- if this OptionRow doesn't need an ActorProxy, don't draw it and save processor cycles
