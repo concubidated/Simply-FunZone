@@ -60,35 +60,33 @@ return Def.ActorFrame{
 	-- animation is left here as a reminder to a future me to maybe look into it.
 	PlayerUnjoinedMessageCommand=function(self, params)
 		if params.Player == player then
-			self:ease(0.5, 275):addy(scale(p,0,1,1,-1) * 30):diffusealpha(0)
+			self:accelerate(0.1):zoomy(0.6):decelerate(0.2):zoomy(1):accelerate(0.2):sleep(0.2):zoomy(0):visible(false)
 		end
 	end,
 
 	-- depending on the value of pn, this will either become
 	-- an AppearP1Command or an AppearP2Command when the screen initializes
-	["Appear"..pn.."Command"]=function(self) self:visible(true):ease(0.5, 275):addy(scale(p,0,1,-1,1) * 30):diffusealpha(1) end,
+	["Appear"..pn.."Command"]=function(self) self:visible(true):zoomy(0):sleep(0.2):accelerate(0.2):zoomy(1):decelerate(0.2):zoomy(0.6):accelerate(0.1):zoomy(1) end,
 
 	InitCommand=function(self)
 		self:visible( false ):halign( p )
 
-		if player == PLAYER_1 then
-
-			if GAMESTATE:IsCourseMode() then
+		-- P1 and P2 actorframe coords differ because the background element gets rotated for P2
+		if GAMESTATE:IsCourseMode() then
+			if player == PLAYER_1 then
 				self:x( _screen.cx - (IsUsingWideScreen() and 356 or 346))
-				self:y(_screen.cy + 32)
+				self:y(_screen.cy + 2)
 			else
-				self:x( _screen.cx - (IsUsingWideScreen() and 356 or 346))
-				self:y(_screen.cy + 12)
+				self:x( _screen.cx - (IsUsingWideScreen() and 356 or 355))
+				self:y(_screen.cy + 122)
 			end
-
-		elseif player == PLAYER_2 then
-
-			if GAMESTATE:IsCourseMode() then
-				self:x( _screen.cx - 210)
-				self:y(_screen.cy + 85)
+		else
+			if player == PLAYER_1 then
+				self:x( _screen.cx - (IsUsingWideScreen() and 356 or 347))
+				self:y(_screen.cy - 18)
 			else
-				self:x( _screen.cx - 260)
-				self:y(_screen.cy + 40)
+				self:x( _screen.cx - (IsUsingWideScreen() and 356 or 356))
+				self:y(_screen.cy + 70)
 			end
 		end
 
@@ -97,50 +95,126 @@ return Def.ActorFrame{
 		end
 	end,
 
-	-- colored background quad
-	Def.Quad{
-		Name="BackgroundQuad",
-		InitCommand=function(self) 
-			self:diffuse(color("#000000"))
-			if #GAMESTATE:GetHumanPlayers() == 1 then
-				self:zoomto(190, _screen.h/8):x(120):y(18)
-			else
-				self:zoomto(175, _screen.h/28):x(113):y(0)
-			end
+	-- background
+	Def.ActorMultiVertex{
+		InitCommand=function(self)
+			-- don't set verts in InitCommand because late joining will not reset the dimensions of this element belonging to the first joined player
+			self:diffuse(GetCurrentColor())
+			self:zoom(0.5)
+			self:queuecommand("Reset")
 		end,
 		ResetCommand=function(self)
 			local StepsOrTrail = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentTrail(player) or GAMESTATE:GetCurrentSteps(player)
-			if #GAMESTATE:GetHumanPlayers() == 1 then
-				self:zoomto(190, _screen.h/8):x(120):y(18)
-			else
-				self:zoomto(175, _screen.h/28):x(113):y(0)
-			end
 			if StepsOrTrail then
 				local difficulty = StepsOrTrail:GetDifficulty()
 				self:diffuse( DifficultyColor(difficulty) )
-				text_table = GetStepsCredit(player)
-				if #GAMESTATE:GetHumanPlayers() == 1 then 
-					if #text_table == 3 then
-						self:fadebottom(0)
-					elseif #text_table == 2 then
-						self:fadebottom(0.5)
-					elseif #text_table == 1 then
-						self:fadebottom(0.8)
-					end
-				else 
-					self:fadebottom(0)
-				end
 			else
 				self:diffuse( PlayerColor(player) )
 			end
+
+			-- these coordinates aren't neat and tidy, but they do create three triangles
+			-- that fit together to approximate hurtpiggypig's original png asset
+
+			-- use different sets of verts for each size variant of this element; this is far better than conditionally warping the element
+			-- maxtrix numerical coordinates differ in the different elements below
+
+			-- coordinates at matrix spot explanation: IsUsingWideScreen() addition adds length, -104 changes the height, and +14 moves the "carrot" to under "STEPS"
+			local SingleHumanPlayerVerts = {
+				--   x   y  z    r,g,b,a
+				{{-113, -104, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+346 or 113+328), -104, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+346 or 113+328), 16, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+346 or 113+328), 16, 0}, {1,1,1,1}},
+				{{-113, 16, 0}, {1,1,1,1}},
+				{{-113, -104, 0}, {1,1,1,1}},
+				{{ -98+14, 16, 0}, {1,1,1,1}},
+				{{ -78+14, 16, 0}, {1,1,1,1}},
+				{{ -88+14, 29, 0}, {1,1,1,1}},
+			}
+
+			local VersusModeVerts = {
+				--   x   y  z    r,g,b,a
+				{{-113, -26, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+346 or 113+328), -26, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+346 or 113+328), 16, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+346 or 113+328), 16, 0}, {1,1,1,1}},
+				{{-113, 16, 0}, {1,1,1,1}},
+				{{-113, -26, 0}, {1,1,1,1}},
+				{{ -98+18, 16, 0}, {1,1,1,1}},
+				{{ -78+18, 16, 0}, {1,1,1,1}},
+				{{ -88+18, 29, 0}, {1,1,1,1}},
+			}
+
+			local CourseModeVerts = {
+				--   x   y  z    r,g,b,a
+				{{-113, -15-17, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+414 or 113+394), -15-17, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+414 or 113+394), 16, 0}, {1,1,1,1}},
+				{{ (IsUsingWideScreen() and 113+414 or 113+394), 16, 0}, {1,1,1,1}},
+				{{-113, 16, 0}, {1,1,1,1}},
+				{{-113, -15-17, 0}, {1,1,1,1}},
+				{{ -98-15, 16, 0}, {1,1,1,1}},
+				{{ -78-15, 16, 0}, {1,1,1,1}},
+				{{ -88-15, 29, 0}, {1,1,1,1}},
+			}
+
+
+			if GAMESTATE:IsCourseMode() then
+				self:SetDrawState({Mode="DrawMode_Triangles"}):SetVertices(CourseModeVerts)
+				if player == PLAYER_1 then
+					self:xy(82,0)
+				else
+					-- something is wrong here... DensityGraph and PaneDisplay are off
+					-- since this UI will only be used in legacy 4:3 aspect ratio let's just be lazy and nudge things into the correct spot 
+					-- without rotating this element about the y axis, there is a single pixel difference between P1 and P2 locations
+					self:xy(289,-8)
+					self:rotationy(180):rotationx(180)
+				end
+			else
+				if #GAMESTATE:GetHumanPlayers() == 1 then
+					self:SetDrawState({Mode="DrawMode_Triangles"}):SetVertices(SingleHumanPlayerVerts)
+					if player == PLAYER_1 then
+						self:xy(82,40)
+					else
+						-- something is wrong here... DensityGraph and PaneDisplay are off
+						-- since this UI will only be used in legacy 4:3 aspect ratio let's just be lazy and nudge things into the correct spot 
+						-- without rotating this element about the y axis, there is a single pixel difference between P1 and P2 locations
+						self:xy(256,40)
+						self:rotationy(180)
+					end
+				else
+					self:SetDrawState({Mode="DrawMode_Triangles"}):SetVertices(VersusModeVerts)
+					if player == PLAYER_1 then
+						self:xy(82,1)
+					else
+						-- same comment as above *shrug*
+						self:xy(256,1)
+						self:rotationy(180)
+					end
+				end
+			end
 		end
-	},	
+	},
 
 	--STEPS label
 	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		Text=GAMESTATE:IsCourseMode() and Screen.String("SongNumber"):format(1) or Screen.String("STEPS"),
 		InitCommand=function(self)
-			self:diffuse(0,0,0,1):horizalign(left):x(30):maxwidth(40):zoom(0.8)
+			self:diffuse(0,0,0,1):maxwidth(40):zoom(0.8):y(-2)
+			if GAMESTATE:IsCourseMode() then
+				self:y(-4)
+				if player == PLAYER_1 then
+					self:horizalign(left):x(30)
+				else
+					self:horizalign(right):x(340)
+				end
+			else
+				if player == PLAYER_1 then
+					self:horizalign(left):x(30)
+				else
+					self:horizalign(right):x(306)
+				end
+			end
 		end,
 		UpdateTrailTextMessageCommand=function(self, params)
 			self:settext( THEME:GetString("ScreenSelectCourse", "SongNumber"):format(params.index) )
@@ -150,17 +224,10 @@ return Def.ActorFrame{
 	--stepartist text
 	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		InitCommand=function(self)
-			self:diffuse(color("#1e282f")):horizalign(left):zoom(0.8)
-			if GAMESTATE:IsCourseMode() then
-				self:x(60):maxwidth(138)
-			else
-				self:x(70):diffuse(color("#000000"))
-				if #GAMESTATE:GetHumanPlayers() == 1 then 
-					self:maxwidth(175)
-				else
-					self:maxwidth(160)
-				end
-			end
+			-- if we don't set vertalign here, latejoining will cause the text to be center aligned until a ResetCommand is initiated (by changing the selected song)
+			-- there's nothing to lose here by just Top_Aligning all text and just changing the y-positions to match
+			self:zoom(0.8):diffuse(color("#000000")):vertalign("VertAlign_Top")
+			self:queuecommand("Reset")
 		end,
 		ResetCommand=function(self)
 
@@ -169,6 +236,22 @@ return Def.ActorFrame{
 
 			-- always stop tweening when steps change in case a MarqueeCommand is queued
 			self:stoptweening()
+
+			self:maxwidth(WideScale(278,292)):y(-8)
+			if GAMESTATE:IsCourseMode() then
+				self:y(-10):maxwidth(350)
+				if player == PLAYER_1 then
+					self:horizalign(left):x(50)
+				else
+					self:horizalign(right):x(320)
+				end
+			else
+				if player == PLAYER_1 then
+					self:horizalign(left):x(70)
+				else
+					self:horizalign(right):x(266)
+				end
+			end
 
 			if SongOrCourse and StepsOrTrail then
 
@@ -180,12 +263,6 @@ return Def.ActorFrame{
 				-- to ensure it stays synced with the scrolling list of songs
 				if not GAMESTATE:IsCourseMode() then
 					-- only queue a Marquee if there are things in the text_table to display
-					self:x(70):diffuse(color("#000000"))
-					if #GAMESTATE:GetHumanPlayers() == 1 then 
-						self:maxwidth(175)
-					else
-						self:maxwidth(160)
-					end
 
 					if #text_table > 0 then
 						if #GAMESTATE:GetHumanPlayers() > 1 then self:queuecommand("Marquee") end
@@ -194,7 +271,8 @@ return Def.ActorFrame{
 							local curText = text_table[i]
 							fulldesc = fulldesc .. curText .. "\n"
 						end
-						self:vertalign("VertAlign_Top"):settext(fulldesc):y(-6)
+						self:settext(fulldesc)
+						DiffuseEmojis(self, fulldesc)
 					else
 						-- no credit information was specified in the simfile for this stepchart, so just set to an empty string
 						self:settext("")
@@ -241,7 +319,8 @@ return Def.ActorFrame{
 								end
 								fulldesc = fulldesc .. curText .. "\n"
 							end
-							self:vertalign("VertAlign_Top"):settext(fulldesc):y(-6)
+							self:settext(fulldesc)
+							DiffuseEmojis(self, fulldesc)
 						else
 							-- no credit information was specified in the simfile for this stepchart, so just set to an empty string
 							self:settext("")
@@ -278,6 +357,7 @@ return Def.ActorFrame{
 		UpdateTrailTextMessageCommand=function(self, params)
 			if text_table then
 				self:settext( text_table[params.index] or "" )
+				DiffuseEmojis(self, fulldesc)
 			end
 		end,
 		OffCommand=function(self) self:stoptweening() end

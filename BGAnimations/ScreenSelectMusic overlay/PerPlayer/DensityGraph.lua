@@ -166,88 +166,6 @@ af2[#af2+1] = NPS_Histogram(player, width, height)..{
 -- We do this in parent actorframe because we want to "stall" before we parse.
 af2[#af2]["CurrentSteps"..pn.."ChangedMessageCommand"] = nil
 
--- The Peak NPS text
-af2[#af2+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
-	Name="NPS",
-	Text="",
-	InitCommand=function(self)
-		self:zoom(0.8)
-		if #GAMESTATE:GetHumanPlayers() == 1 then 
-			self:settext("Peak NPS: \nPeak eBPM: ")
-			self:horizalign(left)
-			self:y(-50)
-			if player == PLAYER_1 then
-				self:x(60)
-			else					
-				self:x(-136)
-			end
-		else
-			self:horizalign("right")
-			self:y(-40)
-			if player == PLAYER_1 then 
-				self:x(140)
-			else
-				self:x(-55)
-			end
-			self:settext("Peak NPS: ")		
-		end
-		-- We want black text in Rainbow mode except during HolidayCheer(), white otherwise.
-		self:diffuse((ThemePrefs.Get("RainbowMode") and not HolidayCheer()) and {0, 0, 0, 1} or {1, 1, 1, 1})
-	end,
-	HideCommand=function(self)
-		if #GAMESTATE:GetHumanPlayers() == 1 then 
-			self:settext("Peak NPS: \nPeak eBPM: ")
-		else
-			self:settext("Peak NPS: ")
-		end
-		self:visible(false)
-	end,
-	RedrawCommand=function(self)
-		if leaving_screen then return end
-		if SL[pn].Streams.PeakNPS ~= 0 then
-			local nps = SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate
-			if #GAMESTATE:GetHumanPlayers() == 1 then 
-				self:horizalign("left")
-				self:y(-50)
-				if player == PLAYER_1 then
-					self:x(60)
-				else					
-					self:x(-136)
-				end
-				self:settext(("Peak NPS: %.1f\nPeak eBPM: %.0f"):format(nps,nps*15))
-			else
-				self:horizalign("right")
-				self:y(-40)
-				if player == PLAYER_1 then 
-					self:x(140)
-				else
-					self:x(-55)
-				end
-				marquee_index = 0
-				text_table = {}
-				table.insert(text_table,("Peak NPS: %.1f"):format(nps))
-				table.insert(text_table,("Peak eBPM: %.1f"):format(nps*15))
-				self:finishtweening():playcommand("Marquee",{text_table=text_table})
-			end
-			self:visible(not showPatternInfo)
-		end
-	end,
-	MarqueeCommand=function(self)
-		marquee_index = (marquee_index % #text_table) + 1
-		if #GAMESTATE:GetHumanPlayers() > 1 then 
-			self:settext(text_table[marquee_index])
-			self:sleep(2):queuecommand("Marquee")
-		end
-	end,
-	OffCommand=function(self)
-		leaving_screen = true
-		self:stoptweening()
-	end,
-	TogglePatternInfoCommand=function(self)
-		self:visible(not showPatternInfo)
-	end
-}
-
 -- Breakdown
 af2[#af2+1] = Def.ActorFrame{
 	Name="Breakdown",
@@ -271,39 +189,68 @@ af2[#af2+1] = Def.ActorFrame{
 		end
 	},
 
+	-- Stream Breakdown
 	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		Text="",
 		Name="BreakdownText",
 		InitCommand=function(self)
-			local textHeight = 17
 			local textZoom = 0.8
-			self:maxwidth(width/textZoom):zoom(textZoom)
+			--let's give some padding so the text doesn't touch the outer edges of this box
+			self:maxwidth(width/textZoom-10):zoom(textZoom)
+			self:queuecommand("MarqueeFlash")
+		end,
+		HideCommand=function(self)
+			self:settext("")
+		end,
+		--we're going to move the Peak NPS text to the beginning of the breakdown
+		--we need to do it this way because of layering conflicts and being unable to match the stepartist animation when the screen loads
+		--by moving PeakNPS here, there's more room for the Stepartist text
+		RedrawCommand=function(self)
+			local textZoom = 0.8
+			self:settext(("Breakdown: ")..(GenerateBreakdownText(pn, 0)))
+			local minimization_level = 1
+			while self:GetWidth() > (width/textZoom) and minimization_level < 4 do		
+				self:settext(("Breakdown: "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate)..(GenerateBreakdownText(pn, minimization_level)))
+				minimization_level = minimization_level + 1
+			end
+		end,
+		MarqueeFlashCommand=function(self)
+			self:sleep(1.75):linear(0.25):diffusealpha(0):sleep(1.75):linear(0.25):diffusealpha(1):queuecommand("MarqueeFlash")
+		end,
+		OffCommand=function(self)
+			self:stoptweening()
+		end,
+	},
+
+	-- Peak NPS/eBPM
+	-- by moving PeakNPS here, there's more room for the Stepartist text
+	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
+		Text="",
+		Name="PeakNPS_eBPM",
+		InitCommand=function(self)
+			local textZoom = 0.8
+			--let's give some padding so the text doesn't touch the outer edges of this box
+			self:maxwidth(width/textZoom-10):zoom(textZoom):diffusealpha(0)
+			self:queuecommand("MarqueeFlash")
 		end,
 		HideCommand=function(self)
 			self:settext("")
 		end,
 		RedrawCommand=function(self)
-			if leaving_screen then return end
-			local textZoom = 0.8
-			breakdown_table = {}
-			marquee_index = 0
-			self:settext(GenerateBreakdownText(pn, 0))
-			breakdown_table[1] = GenerateBreakdownText(pn, 0)
-			local minimization_level = 1
-			while self:GetWidth() > (width/textZoom*(1+minimization_level*0.1)) and minimization_level < 4 do
-				if self:GetWidth() < (width/textZoom*(1.7)) then
-					breakdown_table[2] = GenerateBreakdownText(pn, minimization_level-1)
+			local streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(pn)
+			local totalMeasures = streamMeasures + breakMeasures
+			if #GAMESTATE:GetHumanPlayers() > 1 then
+				if streamMeasures == 0 then
+					self:settext(("   Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
+				else
+					self:settext("Total Stream: " .. string.format("%d/%d (%0.1f%%)", streamMeasures, totalMeasures, streamMeasures/totalMeasures*100) .. ("   Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
 				end
-				self:settext(GenerateBreakdownText(pn, minimization_level))
-				breakdown_table[1] = GenerateBreakdownText(pn, minimization_level)
-				minimization_level = minimization_level + 1
+			else
+				self:settext(("Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("   Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
 			end
-			self:finishtweening():playcommand("Marquee",{breakdown_table=breakdown_table})
 		end,
-		MarqueeCommand=function(self)
-			marquee_index = (marquee_index % #breakdown_table) + 1
-			self:settext(breakdown_table[marquee_index])
-			self:sleep(5):queuecommand("Marquee")
+		MarqueeFlashCommand=function(self)
+			self:sleep(1.75):linear(0.25):diffusealpha(1):sleep(1.75):linear(0.25):diffusealpha(0):queuecommand("MarqueeFlash")
 		end,
 		OffCommand=function(self)
 			self:stoptweening()
