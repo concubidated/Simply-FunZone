@@ -41,6 +41,7 @@ return Def.ActorFrame{
 			end
 
 			if meter then self:settext(meter) end
+			self:maxwidth(70)
 		end
 	},
 	

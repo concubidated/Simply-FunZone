@@ -635,7 +635,7 @@ for player in ivalues(PlayerNumber) do
 		InitCommand=function(self)
 			self:horizalign(right):diffuse(Color.Black)
 			self:xy(pos.col[4], pos.row[2])
-			if not IsUsingWideScreen() then self:maxwidth(66) end
+			if not IsUsingWideScreen() then self:maxwidth(66) else self:maxwidth(45) end
 			self:queuecommand("Set")
 		end,
 		SetCommand=function(self)
