@@ -71,6 +71,8 @@ SSM_Header_StageText = function()
 		return THEME:GetString("Stage", "Stage") .. " " .. tostring(SL.Global.Stages.PlayedThisGame + 1)
 	end
 
+	-- FIXME: this code is broken. "topscreen" variable doesn't return true when it's supposed to
+	-- 	  	  this has effectively rendered the theme for /years/ not to have a stage counter outside of event mode (EventMode) and with NumberOfContinuesAllowed=0
 	local topscreen = SCREENMAN:GetTopScreen()
 	if topscreen then
 

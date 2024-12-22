@@ -1,6 +1,11 @@
 local bmt_actor
 local ses_actor
 
+-- locals for the below commented out code
+
+-- local curScreen = Var "LoadingScreen"
+-- local curStage = GAMESTATE:GetCurrentStage()
+-- local curStageIndex = GAMESTATE:GetCurrentStageIndex()
 -- -----------------------------------------------------------------------
 
 local hours, mins, secs
@@ -106,21 +111,77 @@ if PREFSMAN:GetPreference("EventMode") then
 		end,
 	}
 
--- stage number when not EventMode
+-- stage number when not EventMode (see ScreenSelectMusic StageDisplay.lua for current implementation)
 else
+	-- FIXME: original code here doesn't work
+	-- 		  SSM_Header_StageText() ./Scripts/SL-SelectMusicHelpers.lua doesn't work. This is an upstream issue, see comments there for what's not working.
 
-	af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Header")..{
-		Name="Stage Number",
-		Text=SSM_Header_StageText(),
-		InitCommand=function(self)
-			self:zoom( SL_WideScale(0.5, 0.6) )
-			self:y( SL_WideScale(7.5, 9) / self:GetZoom() )
-			self:diffusealpha(0):x(_screen.cx)
-		end,
-		OnCommand=function(self)
-			self:sleep(0.1):decelerate(0.33):diffusealpha(1)
-		end,
-	}
+	-- af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Header")..{
+	-- 	Name="Stage Number",
+	-- 	Text=SSM_Header_StageText(),
+	-- 	InitCommand=function(self)
+	-- 		self:zoom( SL_WideScale(0.5, 0.6) )
+	-- 		self:y( SL_WideScale(7.5, 9) / self:GetZoom() )
+	-- 		self:diffusealpha(0):x(_screen.cx)
+	-- 	end,
+	-- 	OnCommand=function(self)
+	-- 		self:sleep(0.1):decelerate(0.33):diffusealpha(1)
+	-- 	end,
+	-- }
+
+	-- my attempt to recreate the stage counter from Zmod's Fork
+	-- this code wasn't properly displaying when it was the final stage (with song length limits enabled), so it's best to just repurpose Zmod's stage counter instead
+
+	-- af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Header")..{
+	-- 	Name="Stage Number",
+	-- 	Text="Testing3",
+	-- 	-- Text=SSM_Header_StageText(),
+	-- 	InitCommand=function(self)
+	-- 		self:zoom( SL_WideScale(0.5, 0.6) )
+	-- 		self:y( SL_WideScale(7.5, 9) / self:GetZoom() )
+	-- 		self:diffusealpha(0):x(_screen.cx)
+	-- 			-- if the continue system is enabled, don't worry about determining "Final Stage"
+	-- 			-- if ThemePrefs.Get("NumberOfContinuesAllowed") > 0 then
+	-- 			-- 	self:settext(THEME:GetString("Stage", "Stage") .. " " .. tostring(SL.Global.Stages.PlayedThisGame + 1))
+	-- 			-- else
+	-- 			-- 	self:settext(THEME:GetString("Stage", "Stage") .. " " .. tostring(SL.Global.Stages.PlayedThisGame + 1))
+	-- 			-- end
+	-- 	end,
+	-- 	BeginCommand=function(self)
+	-- 		local top = SCREENMAN:GetTopScreen()
+	-- 		if top then
+	-- 			if not string.find(top:GetName(),"ScreenEvaluation") then
+	-- 				curStageIndex = curStageIndex + 1
+	-- 			end
+	-- 		end
+	-- 		self:playcommand("Set")
+	-- 	end;
+	-- 	OnCommand=function(self)
+	-- 		self:sleep(0.1):decelerate(0.33):diffusealpha(1)
+	-- 	end,
+	-- 	SetCommand=function(self)
+	-- 		local song = GAMESTATE:GetCurrentSong()
+	-- 		local Duration = song:GetLastSecond()
+	-- 		local DurationWithRate = Duration / SL.Global.ActiveModifiers.MusicRate
+
+	-- 		local LongCutoff = PREFSMAN:GetPreference("LongVerSongSeconds")
+	-- 		local MarathonCutoff = PREFSMAN:GetPreference("MarathonVerSongSeconds")
+
+	-- 		local IsMarathon = (DurationWithRate/MarathonCutoff > 1)
+	-- 		local IsLong 	 = (DurationWithRate/LongCutoff > 1)
+
+	-- 		local SongCost = (IsMarathon and 3) or (IsLong and 2) or 1
+	-- 		if GAMESTATE:GetCurrentCourse() then
+	-- 			self:settext( curStageIndex+1 .. " / " .. GAMESTATE:GetCurrentCourse():GetEstimatedNumStages() )
+	-- 		else
+	-- 			if SL.Global.Stages.PlayedThisGame + SongCost >= PREFSMAN:GetPreference("SongsPerPlay") then
+	-- 				self:settext(THEME:GetString("Stage", "Final"))
+	-- 			else
+	-- 				self:settext(THEME:GetString("Stage", "Stage") .. " " .. tostring(SL.Global.Stages.PlayedThisGame + SongCost))
+	-- 			end
+	-- 		end
+	-- 	end
+	-- }
 
 end
 
