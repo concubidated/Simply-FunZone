@@ -20,26 +20,38 @@ end
 local marquee_index = 0
 
 return Def.ActorFrame{
-	Def.Quad{
-		Name="InfoBG",
+	
+	-- coloured box behind Stepartist text
+  	Def.Quad{
 		InitCommand=function(self)
-			self:vertalign("VertAlign_Bottom")
+			if SL.Global.GameMode == "Casual" then
+				self:zoomto(131,40)
+				self:x(51)
+			else
+				self:zoomto(140.5,40)
+				self:x(40.5)
+			end
+			self:y( _screen.cy-76)
 			if player == PLAYER_1 then
 				self:x( self:GetX() * -1 )
-				self:horizalign(left)
-			else
-				self:horizalign(right)
 			end
-			self:zoomto(10,10)
-			self:xy(-110,_screen.cy-56)
-
-			self:diffuse( Color.Black )
-			if ThemePrefs.Get("RainbowMode") and not HolidayCheer() then
-				self:diffuse( Color.White )
+			--hide this colored box element if there is no credit data to display
+			if #info == 0 then
+				self:visible(false)
 			end
-			self:diffusealpha(0.7)
-		end
+			local currentSteps = GAMESTATE:GetCurrentSteps(player)
+			if currentSteps then
+				local currentDifficulty = currentSteps:GetDifficulty()
+					if ThemePrefs.Get("RainbowMode") then
+						self:diffuse(ColorLightTone(DifficultyColor(currentDifficulty)), true )
+					else
+						self:diffuse(ColorDarkTone(DifficultyColor(currentDifficulty)), true )
+					end
+			end
+		end,
 	},
+
+	-- stepartist text
 	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		InitCommand=function(self) self:vertalign("VertAlign_Bottom"):zoom(0.7):xy(108,_screen.cy-42) end,
 		OnCommand=function(self)

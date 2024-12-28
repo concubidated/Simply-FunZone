@@ -93,7 +93,7 @@ if IsNice() then
 		end,
 		OnCommand=function(self)
 
-			self:y(_screen.cy-94)
+			self:y(_screen.cy-104)
 			self:zoom(0.4)
 
 			if player == PLAYER_1 then
@@ -128,7 +128,8 @@ if SL[pn].ActiveModifiers.NoBar then
 		end,
 		OnCommand=function(self)
 
-			self:y(_screen.cy-94)
+			-- just a guess. this image is not even included in this fork? there's also no current "No Bar" modifier in player options
+			self:y(_screen.cy-114)
 			self:zoom(0.15)
 
 			if player == PLAYER_1 then
