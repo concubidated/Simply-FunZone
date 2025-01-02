@@ -52,56 +52,49 @@ return Def.ActorFrame{
 	},
 
 	-- stepartist text
-	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
-		InitCommand=function(self) self:vertalign("VertAlign_Bottom"):zoom(0.7):xy(108,_screen.cy-42) end,
-		OnCommand=function(self)
-			local textColor = Color.White
-			local shadowLength = 0
-			if ThemePrefs.Get("RainbowMode") and not HolidayCheer() then
-				textColor = Color.Black
-			end
-			self:diffuse(textColor)
-			self:shadowlength(shadowLength)
-
-			if player == PLAYER_1 then
-				self:x( self:GetX() * -1 )
-				self:horizalign(left)
+	LoadFont("Common Normal")..{
+		InitCommand=function(self)
+			self:zoom(0.75)
+			self:y(_screen.cy-77)
+		   self:horizalign(center)
+		   if ThemePrefs.Get("RainbowMode") then self:diffuse(Color.Black) end
+			if SL.Global.GameMode == "Casual" then
+				self:x(51)
+				self:maxwidth(155)
+			elseif GAMESTATE:IsCourseMode() then
+				self:x(55.5)
+				self:maxwidth(165)
 			else
-				self:horizalign(right)
-			end
-
-			local finalzoom = 0.7
-			if type(info)=="table" and #info > 0 then
-				-- self:playcommand("Marquee")
-				local finalText = ""
-				for i=1,#info do
-					finalText = finalText .. info[i] .. "\n"
-				end
-				if #info > 2 then
-					finalzoom=0.6
-					self:vertalign("VertAlign_Bottom"):y(_screen.cy-43):zoom(finalzoom)
-				end
-				self:settext(finalText)
-			elseif type(info)=="string" then
-				self:settext(info)
-			end
-			
-			w = self:GetWidth()
-			h = self:GetHeight()
-			
-			while w*finalzoom > 120 and finalzoom > 0.45 do
-				finalzoom = finalzoom - 0.05
-				self:zoom(finalzoom):addy(-1)
-				self:GetParent():GetChild("InfoBG")
-			end
-			self:GetParent():GetChild("InfoBG"):SetWidth(w+20):SetHeight(h-19):zoom(finalzoom)
-			if player == PLAYER_1 then
-				self:GetParent():GetChild("InfoBG"):faderight(0.1)
-			else
-				self:GetParent():GetChild("InfoBG"):fadeleft(0.1)
-				self:GetParent():GetChild("InfoBG"):x( self:GetParent():GetChild("InfoBG"):GetX() * -1 )
+				self:x(40)
+				self:maxwidth(180)
 			end
 		end,
-		OffCommand=function(self) self:stoptweening() end
-	}
+	   OnCommand=function(self)
+		   if player == PLAYER_1 then
+			   self:x( self:GetX() * -1 )
+		   end
+   
+		   if type(info)=="table" and #info > 0 then
+			   self:playcommand("Marquee")
+		   elseif type(info)=="string" then
+			   self:settext(info)
+		   end
+	   end,
+	   MarqueeCommand=function(self)
+		   -- increment the marquee_index, and keep it in bounds
+		   marquee_index = (marquee_index % #info) + 1
+		   -- retrieve the text we want to display
+		   local text = info[marquee_index]
+   
+		   -- set this BitmapText actor to display that text
+		   self:settext( text )
+		   DiffuseEmojis(self, text)
+   
+		   -- sleep 2 seconds before queueing the next Marquee command to do this again
+		   if #info > 1 then
+			   self:sleep(2):queuecommand("Marquee")
+		   end
+	   end,
+	   OffCommand=function(self) self:stoptweening() end
+   }
 }
