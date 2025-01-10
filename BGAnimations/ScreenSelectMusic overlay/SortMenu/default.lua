@@ -188,7 +188,6 @@ local function AddPlayerSortOptions()
     local player_sort_options = {}
     for player in ivalues(GAMESTATE:GetHumanPlayers()) do
         if PROFILEMAN:IsPersistentProfile(player) then
-			SM("Adding player sort options")
             table.insert(player_sort_options, {"SortBy", "Top" .. ToEnumShortString(player) .. "Grades"})
             table.insert(player_sort_options, {"SortBy", "Recent" .. ToEnumShortString(player) .. "Played"})
         end
@@ -196,6 +195,27 @@ local function AddPlayerSortOptions()
     return player_sort_options
 end
 
+local function AddPlaylists()
+	local player_sort_options = {}
+	for player in ivalues(GAMESTATE:GetHumanPlayers()) do
+		local path = getFavoritesPath(player)
+		if FILEMAN:DoesFileExist(path) then
+			table.insert(player_sort_options, {{"MixTape", "Preferred"}})
+			break
+		end
+	end
+	-- Get the name of every file in the Other/Playlists directory
+	local files = FILEMAN:GetDirListing(THEME:GetCurrentThemeDirectory().."Other/Playlists/")
+	-- Add each file to the wheel options
+	for i=1, #files do
+		local file = files[i]
+		if file:match("%.txt$") then
+			local playlist = file:gsub("%.txt$", "")
+			table.insert(player_sort_options, {{"Playlist", playlist}})
+		end
+	end
+	return player_sort_options
+end
 local function GetChangeableStyles(style)
 	local available_styles = {}
 	-- Allow players to switch from single to double and from double to single
@@ -286,6 +306,10 @@ local wheel_options = {
 		{
 			GetChangeableStyles(style),
 		}
+	},
+	{
+		{"", "CategoryPlaylists"},
+		AddPlaylists()
 	},
 	{ {"SortBy", "Group"} },
 	{ {"SortBy", "Title"} },
