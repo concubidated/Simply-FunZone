@@ -1,0 +1,376 @@
+-- Currently the Density Graph in SSM doesn't work for Courses.
+-- Disable the functionality.
+if GAMESTATE:IsCourseMode() then return end
+
+
+local player = ...
+local pn = ToEnumShortString(player)
+
+-- Height and width of the density graph.
+local height = 64
+local width = IsUsingWideScreen() and 286 or 276
+
+local marquee_index
+local text_table = {}
+local leaving_screen = false
+local breakdown_table = {}
+
+local function CloseFolder()
+	local wheel = SCREENMAN:GetTopScreen():GetMusicWheel()
+	local section = wheel:GetSelectedSection()
+	wheel:SetOpenSection(""):SetOpenSection(section):SetOpenSection("")
+	wheel:Move(1)
+	wheel:Move(-1)
+	wheel:Move(0)
+end
+-- In 2-players mode, whether the DensityGraph or PatternInfo is shown
+-- Can be toggled by the code "ToggleChartInfo" in metrics.ini
+local showPatternInfo = false
+
+local af = Def.ActorFrame{
+	InitCommand=function(self)
+		self:visible( GAMESTATE:IsHumanPlayer(player) )
+		self:x(_screen.cx-182)
+		if #GAMESTATE:GetHumanPlayers() == 1 then 
+			self:y(_screen.cy+62)
+		else
+			self:y(_screen.cy+23)
+		end
+
+		if player == PLAYER_2 then
+			self:addy(height+24)
+		end
+
+		if IsUsingWideScreen() then
+			self:addx(-5)
+		end
+	end,
+	PlayerJoinedMessageCommand=function(self, params)
+		self:x(_screen.cx-182)
+		if #GAMESTATE:GetHumanPlayers() == 1 then 
+			self:y(_screen.cy+62)
+
+		else
+			self:y(_screen.cy+23)
+		end
+		if player == PLAYER_2 then
+			self:addy(height+24)
+		end
+
+		if IsUsingWideScreen() then
+			self:addx(-5)
+		end
+		if params.Player == player then
+			self:visible(true)
+		end
+	end,
+	PlayerUnjoinedMessageCommand=function(self, params)
+		self:x(_screen.cx-182)
+		self:y(_screen.cy+62)
+		if player == PLAYER_2 then
+			self:addy(height+24)
+		end
+
+		if IsUsingWideScreen() then
+			self:addx(-5)
+		end
+		if params.Player == player then
+			self:visible(false)
+		end
+	end,
+	PlayerProfileSetMessageCommand=function(self, params)
+		if params.Player == player then
+			self:queuecommand("Redraw")
+		end
+	end,
+	CodeMessageCommand=function(self, params)
+		-- Toggle between the density graph and the pattern info
+		if params.Name == "TogglePatternInfo" and params.PlayerNumber == player then
+			-- Only need to toggle in versus since in single player modes, both
+			-- panes are already displayed.
+			if GAMESTATE:GetNumSidesJoined() == 2 then
+				showPatternInfo = not showPatternInfo
+				self:queuecommand("TogglePatternInfo")
+			end
+		elseif (params.Name == "CloseFolder1" or params.Name == "CloseFolder2" or params.Name == "CloseFolder3") and params.Name == ThemePrefs.Get("CloseFolderCodes") then
+			CloseFolder()
+		end
+	end,
+}
+
+-- Background quad for the density graph
+af[#af+1] = Def.Quad{
+	InitCommand=function(self)
+		self:diffuse(color("#1e282f")):zoomto(width, height)
+		if ThemePrefs.Get("RainbowMode") then
+			self:diffusealpha(0.9)
+		end
+		if ThemePrefs.Get("VisualStyle") == "Technique" then
+			self:diffusealpha(0.5)
+		end
+	end
+}
+
+af[#af+1] = Def.ActorFrame{
+	Name="ChartParser",
+	-- Hide when scrolling through the wheel. This also handles the case of
+	-- going from song -> folder. It will get unhidden after a chart is parsed
+	-- below.
+	CurrentSongChangedMessageCommand=function(self)
+		self:queuecommand("Hide")
+	end,
+	["CurrentSteps"..pn.."ChangedMessageCommand"]=function(self)
+		self:queuecommand("Hide")
+		self:stoptweening()
+		self:sleep(0.4)
+		self:queuecommand("ParseChart")
+	end,
+	ParseChartCommand=function(self)
+		local steps = GAMESTATE:GetCurrentSteps(player)
+		if steps then
+			MESSAGEMAN:Broadcast(pn.."ChartParsing")
+			ParseChartInfo(steps, pn)
+			self:queuecommand("Show")
+		end
+	end,
+	ShowCommand=function(self)
+		if GAMESTATE:GetCurrentSong() and
+				GAMESTATE:GetCurrentSteps(player) then
+			MESSAGEMAN:Broadcast(pn.."ChartParsed")
+			self:queuecommand("Redraw")
+		else
+			self:queuecommand("Hide")
+		end
+	end
+}
+
+local af2 = af[#af]
+
+-- The Density Graph itself. It already has a "RedrawCommand".
+af2[#af2+1] = NPS_Histogram(player, width, height)..{
+	Name="DensityGraph",
+	OnCommand=function(self)
+		self:addx(-width/2):addy(height/2)
+	end,
+	HideCommand=function(self)
+		self:visible(false)
+	end,
+	RedrawCommand=function(self)
+		self:visible(not showPatternInfo)
+	end,
+	TogglePatternInfoCommand=function(self)
+		self:visible(not showPatternInfo)
+	end
+}
+-- Don't let the density graph parse the chart.
+-- We do this in parent actorframe because we want to "stall" before we parse.
+af2[#af2]["CurrentSteps"..pn.."ChangedMessageCommand"] = nil
+
+-- Breakdown
+af2[#af2+1] = Def.ActorFrame{
+	Name="Breakdown",
+	InitCommand=function(self)
+		local actorHeight = 17
+		self:addy(height/2 - actorHeight/2)
+	end,
+	HideCommand=function(self)
+		self:visible(false)
+	end,
+	RedrawCommand=function(self)
+		self:visible(not showPatternInfo)
+	end,
+	TogglePatternInfoCommand=function(self)
+		self:visible(not showPatternInfo)
+	end,
+	Def.Quad{
+		InitCommand=function(self)
+			local bgHeight = 17
+			self:diffuse(color("#000000")):zoomto(width, bgHeight):diffusealpha(0.5)
+		end
+	},
+
+	-- Stream Breakdown
+	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
+		Text="",
+		Name="BreakdownText",
+		InitCommand=function(self)
+			local textZoom = 0.8
+			--let's give some padding so the text doesn't touch the outer edges of this box
+			self:maxwidth(width/textZoom-10):zoom(textZoom)
+			self:queuecommand("MarqueeFlash")
+		end,
+		HideCommand=function(self)
+			self:settext("")
+		end,
+		--we're going to move the Peak NPS text to the beginning of the breakdown
+		--we need to do it this way because of layering conflicts and being unable to match the stepartist animation when the screen loads
+		--by moving PeakNPS here, there's more room for the Stepartist text
+		RedrawCommand=function(self)
+			local textZoom = 0.8
+			self:settext(("Breakdown: ")..(GenerateBreakdownText(pn, 0)))
+			local minimization_level = 1
+			while self:GetWidth() > (width/textZoom) and minimization_level < 4 do		
+				self:settext(("Breakdown: "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate)..(GenerateBreakdownText(pn, minimization_level)))
+				minimization_level = minimization_level + 1
+			end
+		end,
+		MarqueeFlashCommand=function(self)
+			self:sleep(1.75):linear(0.25):diffusealpha(0):sleep(1.75):linear(0.25):diffusealpha(1):queuecommand("MarqueeFlash")
+		end,
+		OffCommand=function(self)
+			self:stoptweening()
+		end,
+	},
+
+	-- Peak NPS/eBPM
+	-- by moving PeakNPS here, there's more room for the Stepartist text
+	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
+		Text="",
+		Name="PeakNPS_eBPM",
+		InitCommand=function(self)
+			local textZoom = 0.8
+			--let's give some padding so the text doesn't touch the outer edges of this box
+			self:maxwidth(width/textZoom-10):zoom(textZoom):diffusealpha(0)
+			self:queuecommand("MarqueeFlash")
+		end,
+		HideCommand=function(self)
+			self:settext("")
+		end,
+		RedrawCommand=function(self)
+			local streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(pn)
+			local totalMeasures = streamMeasures + breakMeasures
+			if #GAMESTATE:GetHumanPlayers() > 1 then
+				if streamMeasures == 0 then
+					self:settext(("   Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
+				else
+					self:settext("Total Stream: " .. string.format("%d/%d (%0.1f%%)", streamMeasures, totalMeasures, streamMeasures/totalMeasures*100) .. ("   Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
+				end
+			else
+				self:settext(("Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("   Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
+			end
+		end,
+		MarqueeFlashCommand=function(self)
+			self:sleep(1.75):linear(0.25):diffusealpha(1):sleep(1.75):linear(0.25):diffusealpha(0):queuecommand("MarqueeFlash")
+		end,
+		OffCommand=function(self)
+			self:stoptweening()
+		end,
+	}
+}
+
+af2[#af2+1] = Def.ActorFrame{
+	Name="PatternInfo",
+	InitCommand=function(self)
+		if GAMESTATE:GetNumSidesJoined() == 2 then
+			self:y(0)
+		else
+			if player == PLAYER_1 then
+				self:y(38 + 24)
+			else
+				self:y(-38 - 80)
+			end
+		end
+		self:visible(GAMESTATE:GetNumSidesJoined() == 1)
+	end,
+	PlayerJoinedMessageCommand=function(self, params)
+		self:visible(GAMESTATE:GetNumSidesJoined() == 1)
+		if GAMESTATE:GetNumSidesJoined() == 2 then
+			self:y(0)
+		else
+			if player == PLAYER_1 then
+				self:y(38 + 24)
+			else
+				self:y(-38 - 80)
+			end
+		end
+	end,
+	PlayerUnjoinedMessageCommand=function(self, params)
+		self:visible(GAMESTATE:GetNumSidesJoined() == 1)
+		if player == PLAYER_1 then
+			self:y(38 + 24)
+		else
+			self:y(-38 - 80)
+		end
+	end,
+	TogglePatternInfoCommand=function(self)
+		self:visible(showPatternInfo)
+	end,
+	
+	-- Background for the additional chart info.
+	-- Only shown in 1 Player mode
+	Def.Quad{
+		InitCommand=function(self)
+			self:addy(-4):diffuse(color("#1e282f")):zoomto(width, height-10)
+			if ThemePrefs.Get("VisualStyle") == "Technique" then
+				self:diffusealpha(0.5)
+			end
+		end,
+	}
+}
+
+local af3 = af2[#af2]
+
+local layout = {
+	{"Crossovers", "Footswitches"},
+	{"Sideswitches", "Jacks"},
+	{"Brackets", "Total Stream"},
+}
+
+local colSpacing = 150
+local rowSpacing = 17
+
+for i, row in ipairs(layout) do
+	for j, col in pairs(row) do
+		af3[#af3+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
+			Text=col ~= "Total Stream" and "0" or "None (0.0%)",
+			Name=col .. "Value",
+			InitCommand=function(self)
+				local textHeight = 17
+				local textZoom = 0.7
+				self:zoom(textZoom):horizalign(right)
+				if col == "Total Stream" then
+					self:maxwidth(100)
+				end
+				self:xy(-width/2 + 40, -height/2 + 10)
+				self:addx((j-1)*colSpacing)
+				self:addy((i-1)*rowSpacing)
+			end,
+			HideCommand=function(self)
+				if col ~= "Total Stream" then
+					self:settext("0")
+				else
+					self:settext("None (0.0%)")
+				end
+			end,
+			RedrawCommand=function(self)
+				if col ~= "Total Stream" then
+					self:settext(SL[pn].Streams[col])
+				else
+					local streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(pn)
+					local totalMeasures = streamMeasures + breakMeasures
+					if streamMeasures == 0 then
+						self:settext("None (0.0%)")
+					else
+						self:settext(string.format("%d/%d (%0.2f%%)", streamMeasures, totalMeasures, streamMeasures/totalMeasures*100))
+					end
+				end
+			end
+		}
+
+		af3[#af3+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
+			Text=col,
+			Name=col,
+			InitCommand=function(self)
+				local textHeight = 17
+				local textZoom = 0.8
+				self:maxwidth(width/textZoom):zoom(textZoom):horizalign(left)
+				self:xy(-width/2 + 50, -height/2 + 10)
+				self:addx((j-1)*colSpacing)
+				self:addy((i-1)*rowSpacing)
+			end,
+		}
+
+	end
+end
+
+return af
