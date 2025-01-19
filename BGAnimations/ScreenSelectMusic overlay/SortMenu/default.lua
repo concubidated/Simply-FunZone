@@ -202,7 +202,8 @@ local function AddPlaylists()
 	local player_sort_options = {}
 	for player in ivalues(GAMESTATE:GetHumanPlayers()) do
 		local path = getFavoritesPath(player)
-		if FILEMAN:DoesFileExist(path) then
+		-- OutFox is not currently compatible with the Favorites system in this theme
+		if FILEMAN:DoesFileExist(path) and not IsOutFox() then
 			table.insert(player_sort_options, {{"MixTape", "Preferred"}})
 			break
 		end
@@ -212,7 +213,8 @@ local function AddPlaylists()
 	-- Add each file to the wheel options
 	for i=1, #files do
 		local file = files[i]
-		if file:match("%.txt$") then
+		-- OutFox is not currently compatible with the Favorites system in this theme
+		if file:match("%.txt$") and not IsOutFox() then
 			local playlist = file:gsub("%.txt$", "")
 			table.insert(player_sort_options, {{"Playlist", playlist}})
 		end
@@ -275,7 +277,12 @@ local wheel_options = {
 	-- The first element becomes the top and bottomtext for the category.
 	-- The second element's table contains that options will show under this category.
 	-- It follows the same structure as the top level table.
+	-- If all submenu items are removed because of a condition, that empty submenu will not appear in the resulting list.
 
+	{ {"WhereforeArtThou", "SongSearch"}, not GAMESTATE:IsCourseMode() and ThemePrefs.Get("KeyboardFeatures") },
+	{ {"GrooveStats", "Leaderboard"}, IsServiceAllowed(SL.GrooveStats.Leaderboard) and GAMESTATE:GetCurrentSong() ~= nil },
+	{ {"SetSummaryText", "SetSummary"}, SL.Global.Stages.PlayedThisGame > 0 },
+	{ {"ChangeMode", "Casual"}, SL.Global.Stages.PlayedThisGame == 0 and SL.Global.GameMode ~= "Casual" and GAMESTATE:GetCoinMode() ~= "CoinMode_Home"},
 	{ 
 		{"", "CategorySorts"}, 
 		{
@@ -296,11 +303,10 @@ local wheel_options = {
 	{
 		{"", "CategoryAdvanced"},
 		{
-			{ {"FeelingSalty", "TestInput"}, GAMESTATE:IsEventMode() },
+			{ {"FeelingSalty", "TestInput"} },
 			{ {"HardTime", "PracticeMode"}, GAMESTATE:IsEventMode() and GAMESTATE:GetCurrentSong() ~= nil and ThemePrefs.Get("KeyboardFeatures")},
-			{ {"TakeABreather", "LoadNewSongs"} },
+			{ {"TakeABreather", "LoadNewSongs"}, GAMESTATE:IsEventMode() or GAMESTATE:GetCoinMode() == "CoinMode_Home"},
 			{ {"NeedMoreRam", "ViewDownloads"}, DownloadsExist() },
-			{ {"WhereforeArtThou", "SongSearch"}, not GAMESTATE:IsCourseMode() and ThemePrefs.Get("KeyboardFeatures") },
 			{ {"NextPlease", "SwitchProfile"}, ThemePrefs.Get("AllowScreenSelectProfile") },
 		}
 	},
@@ -314,9 +320,6 @@ local wheel_options = {
 		{"", "CategoryPlaylists"},
 		AddPlaylists()
 	},
-	{ {"SortBy", "Group"} },
-	{ {"SortBy", "Title"} },
-	{ {"SortBy", "Recent"} },
 	-- Allow players to switch out to a different SL GameMode if no stages have been played yet,
 	-- but don't add the current SL GameMode as a choice.
 	{ {"ChangeMode", "ITG"}, SL.Global.Stages.PlayedThisGame == 0 and SL.Global.GameMode ~= "ITG" },
@@ -324,10 +327,10 @@ local wheel_options = {
 	-- and offer to switch them back to casual mode. This allows them to do so again.
 	-- It's technically not possible to reach the sort menu in Casual Mode, but juuust in case let's still
 	-- include the check.
-	{ {"ChangeMode", "Casual"}, SL.Global.Stages.PlayedThisGame == 0 and SL.Global.GameMode ~= "Casual" },
-	{ {"ImLovinIt", "AddFavorite"}, GAMESTATE:GetCurrentSong() ~= nil  },
-	AddFavorites(),
-	{ {"GrooveStats", "Leaderboard"}, IsServiceAllowed(SL.GrooveStats.Leaderboard) and GAMESTATE:GetCurrentSong() ~= nil },
+
+	-- OutFox is not currently compatible with the Favorites system in this theme
+	{ {"ImLovinIt", "AddFavorite"}, GAMESTATE:GetCurrentSong() ~= nil and not IsOutFox() },
+	{ AddFavorites(), not IsOutFox() },
 }
 
 
@@ -524,10 +527,6 @@ local t = Def.ActorFrame {
 				table.insert(wheel_options, {"MixTape", "Preferred"})
 				break
 			end
-		end
-		
-		if SL.Global.Stages.PlayedThisGame > 0 then
-			table.insert(wheel_options, {"SetSummaryText", "SetSummary"})
 		end
 		
 		-- Override sick_wheel's default focus_pos, which is math.floor(num_items / 2)
