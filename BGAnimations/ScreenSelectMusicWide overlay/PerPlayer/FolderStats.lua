@@ -72,7 +72,7 @@ af2 = Def.ActorFrame {
 }
 
 af2.BuildSongLampArrayCommand=function(self)
-	if SCREENMAN:GetTopScreen():GetName() == "ScreenSelectMusic" then
+	if SCREENMAN:GetTopScreen():GetName() == "ScreenSelectMusicWide" then
 		local profile = PROFILEMAN:GetProfile(player)
 		local profileName = profile:GetDisplayName()
 		if (not GAMESTATE:IsPlayerEnabled(player)) or profileName == "" or GAMESTATE:GetSortOrder() ~= 'SortOrder_Group' then 
