@@ -94,7 +94,6 @@ for ind,plr in pairs(PlayerNumber) do
 					self:GetChild("Status"):settext( params.StatusCode == 500 and profilefailSync or profilesynced )
 					self:playcommand("ActionPlay")
 				end
-				self:GetChild("RemainingTime"):finishtweening():diffusealpha(1):cropright(0):linear(2.8):cropright(1):sleep(0):diffusealpha(0)
 			end
 			if params.Name == "MachineLogin" then
 				self:x(SCREEN_CENTER_X)
