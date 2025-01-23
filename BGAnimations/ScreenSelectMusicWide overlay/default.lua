@@ -45,15 +45,8 @@ local af = Def.ActorFrame{
 	-- next, load visual elements; the order of these matters
 	-- i.e. content in PerPlayer/Over needs to draw on top of content from PerPlayer/Under
 
-	-- make the MusicWheel appear to cascade down; this should draw underneath P2's PaneDisplay
-	LoadActor("./MusicWheelAnimation.lua"),
-
 	-- number of steps, jumps, holds, etc., and high scores associated with the current stepchart
 	LoadActor("./PaneDisplay.lua"),
-
-	--reorder StepsDisplayList here so that the tail for the stepartistbubble isn't covered in CourseMode
-	-- The grid for the difficulty picker (normal) or CourseContentsList (CourseMode)
-	LoadActor("./StepsDisplayList/default.lua"),
 
 	-- elements we need two of (one for each player) that draw underneath the StepsDisplayList
 	-- this includes the stepartist boxes, the density graph, and the cursors.
@@ -64,6 +57,9 @@ local af = Def.ActorFrame{
 
 	-- Banner Art
 	LoadActor("./Banner.lua"),
+
+	-- The grid for the difficulty picker
+	LoadActor("./StepsDisplayList/default.lua"),
 
 	-- ---------------------------------------------------
 	-- finally, load the overlay used for sorting the MusicWheel (and more), hidden by default

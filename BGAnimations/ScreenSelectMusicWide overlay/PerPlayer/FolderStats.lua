@@ -1,13 +1,8 @@
--- No folders in course mode to get stats
-if GAMESTATE:IsCourseMode() then return end
-
 -- Don't show folder stats if disabled in operator menu
 if not ThemePrefs.Get("FolderStats") then return end
 
 local player = ...
 local pn = ToEnumShortString(player)
-
-local IsNotWide = (GetScreenAspectRatio() < 16/9)
 
 local currentFolder = ""
 local currentDifficulty = ""	
@@ -15,10 +10,10 @@ local currentDifficulty = ""
 local af = Def.ActorFrame{
 	InitCommand=function(self)
 		self:y(_screen.cy*0.3)
-		if #GAMESTATE:GetHumanPlayers() > 1 and player == PLAYER_1 then 
-			self:x(_screen.cx*1.305)
+		if player == PLAYER_1 then 
+			self:x(_screen.cx-294)
 		else
-			self:x(_screen.cx*1.77)
+			self:x(_screen.cx+294)
 		end
 	end,
 	CurrentSongChangedMessageCommand=function(self)
@@ -28,11 +23,6 @@ local af = Def.ActorFrame{
 		self:queuecommand("BuildSongLampArray")
 	end,
 	PlayerJoinedMessageCommand=function(self, params)
-		if #GAMESTATE:GetHumanPlayers() > 1 and player == PLAYER_1 then 
-			self:x(_screen.cx*1.305)
-		else
-			self:x(_screen.cx*1.77)
-		end
 		if params.Player == player then
 			self:visible(true)
 		end
@@ -50,7 +40,7 @@ local grades = {}
 for i=1,num_tiers do
 	grades[ ("Grade_Tier%02d"):format(i) ] = i-1
 end
-local columnWidth = IsNotWide and 62 or 80
+local columnWidth = 80
 
 -- assign the "Grade_Failed" key a value equal to num_tiers
 grades["Grade_Failed"] = num_tiers
@@ -135,7 +125,7 @@ af2.BuildSongLampArrayCommand=function(self)
 							end
 						end
 					end
-					columnWidth = IsNotWide and (310/bestGrade) or (400/bestGrade)
+					columnWidth = 400/bestGrade
 					self:playcommand("FolderSummary", {folderName=folderName, profileName=profileName, countSongs=countSongs, scores=scores, difficulty=difficulty, bestGrade=bestGrade })
 				end
 			else
@@ -146,8 +136,8 @@ af2.BuildSongLampArrayCommand=function(self)
 end
 
 -- Banner size
-local height = IsNotWide and 314 or 418
-local width = IsNotWide and 123 or 164
+local height = 418
+local width = 164
 
 local style = ThemePrefs.Get("VisualStyle")
 local colorTable = (style == "SRPG6") and SL.SRPG6.Colors or SL.DecorativeColors
@@ -191,11 +181,6 @@ af2[#af2+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		self:y(-60)
 		self:zoom(2)
 		self:maxwidth(200)
-		
-		if IsNotWide then
-			self:zoom(1.5)
-			self:y(-50)
-		end
 	end
 }
 
@@ -208,9 +193,6 @@ af2[#af2+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		self:y(-20)
 		self:zoom(2)
 		self:maxwidth(200)
-		if IsNotWide then
-			self:zoom(1.5)
-		end
 	end
 }
 
@@ -223,9 +205,6 @@ af2[#af2+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		self:settext(text)
 		self:y(15)
 		self:zoom(1.25)
-		if IsNotWide then
-			self:zoom(0.94)
-		end
 	end
 }
 
@@ -244,11 +223,6 @@ af2[#af2+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		self:x(-220+columnWidth)
 		self:y(52)
 		self:zoom(1.4)
-		if IsNotWide then
-			self:zoom(1.05)
-			self:x(-170+columnWidth)
-			self:y(45)
-		end
 	end
 }
 af2[#af2+1] = Def.Sprite{
@@ -263,11 +237,6 @@ af2[#af2+1] = Def.Sprite{
 		self:x(-260+columnWidth)
 		self:y(52)
 		self:zoom(0.5)
-		if IsNotWide then
-			self:zoom(0.38)
-			self:x(-200+columnWidth)
-			self:y(45)
-		end
 	end
 }
 for i=1,4 do
@@ -285,11 +254,6 @@ for i=1,4 do
 			self:x(-(columnWidth*params.bestGrade/2)+20+columnWidth*(i-(5-params.bestGrade)+0.5))
 			self:y(52)
 			self:zoom(1.4)
-			if IsNotWide then
-				self:zoom(1.05)
-				self:x(-(columnWidth*params.bestGrade/2)+15+columnWidth*(i-(5-params.bestGrade)+0.5))
-				self:y(45)
-			end
 		end
 	}
 	af2[#af2+1] = Def.Sprite{
@@ -305,11 +269,6 @@ for i=1,4 do
 			self:x(-(columnWidth*params.bestGrade/2)-20+columnWidth*(i-(5-params.bestGrade)+0.5))
 			self:y(52)
 			self:zoom(0.5)
-			if IsNotWide then
-				self:zoom(0.38)
-				self:x(-(columnWidth*params.bestGrade/2)-15+columnWidth*(i-(5-params.bestGrade)+0.5))
-				self:y(45)
-			end
 		end
 	}
 end

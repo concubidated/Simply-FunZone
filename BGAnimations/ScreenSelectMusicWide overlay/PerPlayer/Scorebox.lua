@@ -13,7 +13,6 @@ if (not IsServiceAllowed(SL.GrooveStats.GetScores) or
 end
 
 local n = player==PLAYER_1 and "1" or "2"
-local IsNotWide = (GetScreenAspectRatio() < 16/9)
 local NoteFieldIsCentered = (GetNotefieldX(player) == _screen.cx)
 local NumEntries = 5
 
@@ -357,23 +356,11 @@ end
 local af = Def.ActorFrame{
 	Name="ScoreBox"..pn,
 	InitCommand=function(self)
-		if #GAMESTATE:GetHumanPlayers() == 1 then 
-			self:x(_screen.cx + 80):y(_screen.cy + 160)
-			if pn == "P2" then
-				self:y(_screen.cy*1.65 - 55)
-			end
+		self:y(_screen.cy * .65):zoom(1)
+		if pn == "P1" then
+			self:x(_screen.cx-294)
 		else
-			if pn == "P1" then
-				self:zoom(0.65):x(_screen.cx - 65):y(_screen.cy + 178)
-				if IsNotWide then
-					self:x(_screen.cx - 48)
-				end
-			else
-				self:zoom(0.65):x(_screen.cx + 371):y(_screen.cy + 178)
-				if IsNotWide then
-					self:x(_screen.cx + 279)
-				end
-			end
+			self:x(_screen.cx+294)
 		end
 		self.isFirst = true
 	end,
@@ -381,24 +368,14 @@ local af = Def.ActorFrame{
 	OffCommand=function(self) self:stoptweening() end,
 	PlayerJoinedMessageCommand=function(self, params)
 		if pn == "P1" then
-			self:zoom(0.65):x(_screen.cx - 65):y(_screen.cy + 178)
-			if IsNotWide then
-				self:x(_screen.cx - 48)
-			end
+			self:zoom(1):x(_screen.cx-294):y(_screen.cy * .65)
 		else
-			self:zoom(0.65):x(_screen.cx + 371):y(_screen.cy + 178)
-			if IsNotWide then
-				self:x(_screen.cx + 279)
-			end
+			self:zoom(1):x(_screen.cx+294):y(_screen.cy * .65)
 		end
 	end,
 	PlayerUnjoinedMessageCommand=function(self, params)
 		if params.Player == player then
 			self:visible(false)
-		end
-		self:x(_screen.cx + 80):y(_screen.cy + 160):zoom(1)
-		if pn == "P2" then
-			self:y(_screen.cy*1.65 - 55)
 		end
 	end,
 	CurrentSongChangedMessageCommand=function(self)
@@ -569,16 +546,9 @@ local af = Def.ActorFrame{
 		Name="Outline",
 		InitCommand=function(self)
 			self:diffuse(GrooveStatsBlue):setsize(width + border, height + border)
-			if IsNotWide and #GAMESTATE:GetHumanPlayers() > 1 then
-				self:setsize(width + border - 40, height + border)
-			end
 		end,
 		PlayerJoinedMessageCommand=function(self,params)
-			if IsNotWide then
-				self:setsize(width + border - 40, height + border)
-			else
-				self:setsize(width + border, height + border)
-			end
+			self:setsize(width + border, height + border)
 		end,
 		PlayerUnjoinedMessageCommand=function(self,params)
 			self:setsize(width + border, height + border)
@@ -594,16 +564,9 @@ local af = Def.ActorFrame{
 		Name="Background",
 		InitCommand=function(self)
 			self:diffuse(color("#000000")):setsize(width, height)
-			if IsNotWide and #GAMESTATE:GetHumanPlayers() > 1 then
-				self:setsize(width - 40, height)
-			end
 		end,
 		PlayerJoinedMessageCommand=function(self,params)
-			if IsNotWide then
-				self:setsize(width - 40, height)
-			else
-				self:setsize(width, height)
-			end
+			self:setsize(width, height)
 		end,
 		PlayerUnjoinedMessageCommand=function(self,params)
 			self:setsize(width, height)
@@ -724,16 +687,9 @@ for i=1,NumEntries do
 			Texture=THEME:GetPathG("", "crown.png"),
 			InitCommand=function(self)
 				self:zoom(0.09):xy(-width/2 + 14, y):diffusealpha(0)
-				if IsNotWide and #GAMESTATE:GetHumanPlayers() > 1 then
-					self:x(-width/2 + 32)
-				end
 			end,
 			PlayerJoinedMessageCommand=function(self,params)
-				if IsNotWide then
-					self:x(-width/2 + 32)
-				else
-					self:x(-width/2 + 14)
-				end
+				self:x(-width/2 + 14)
 			end,
 			PlayerUnjoinedMessageCommand=function(self,params)
 				self:x(-width/2 + 14)
@@ -756,16 +712,9 @@ for i=1,NumEntries do
 			Text="",
 			InitCommand=function(self)
 				self:diffuse(Color.White):xy(-width/2 + 27, y):maxwidth(30):horizalign(right):zoom(zoom)
-				if IsNotWide and #GAMESTATE:GetHumanPlayers() > 1 then
-					self:x(-width/2 + 42)
-				end
 			end,
 			PlayerJoinedMessageCommand=function(self,params)
-				if IsNotWide then
-					self:x(-width/2 + 42)
-				else
-					self:x(-width/2 + 27)
-				end
+				self:x(-width/2 + 27)
 			end,
 			PlayerUnjoinedMessageCommand=function(self,params)
 				self:x(-width/2 + 27)
@@ -794,16 +743,9 @@ for i=1,NumEntries do
 		Text="",
 		InitCommand=function(self)
 			self:diffuse(Color.White):xy(-width/2 + 30, y):maxwidth(100):horizalign(left):zoom(zoom)
-			if IsNotWide and #GAMESTATE:GetHumanPlayers() > 1 then
-				self:x(-width/2 + 45):maxwidth(70)
-			end
 		end,
 		PlayerJoinedMessageCommand=function(self,params)
-			if IsNotWide then
-				self:x(-width/2 + 45):maxwidth(70)
-			else
-				self:x(-width/2 + 30):maxwidth(100)
-			end
+			self:x(-width/2 + 30):maxwidth(100)
 		end,
 		PlayerUnjoinedMessageCommand=function(self,params)
 			self:x(-width/2 + 30):maxwidth(100)
@@ -831,16 +773,9 @@ for i=1,NumEntries do
 		Text="",
 		InitCommand=function(self)
 			self:diffuse(Color.White):xy(-width/2 + 160, y):horizalign(right):zoom(zoom)
-			if IsNotWide and #GAMESTATE:GetHumanPlayers() > 1 then
-				self:x(-width/2 + 140)
-			end
 		end,
 		PlayerJoinedMessageCommand=function(self,params)
-			if IsNotWide then
-				self:x(-width/2 + 140)
-			else
-				self:x(-width/2 + 160)
-			end
+			self:x(-width/2 + 160)
 		end,
 		PlayerUnjoinedMessageCommand=function(self,params)
 			self:x(-width/2 + 160)

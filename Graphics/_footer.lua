@@ -1,5 +1,5 @@
 -- tables of rgba values
-local dark  = {0,0,0,0.9}
+local dark  = {0,0,0,1}
 local light = {0.65,0.65,0.65,1}
 
 return Def.Quad{
@@ -11,7 +11,7 @@ return Def.Quad{
 		elseif DarkUI() then
 			self:diffuse(dark)
 		elseif ThemePrefs.Get("VisualStyle") == "Technique" then
-			self:diffusealpha(0)
+			self:diffusealpha(1):diffuse(dark)
 		else
 			self:diffuse(light)
 		end
@@ -28,7 +28,7 @@ return Def.Quad{
 			if topscreen == "ScreenSelectMusic" and not ThemePrefs.Get("RainbowMode") then
 				self:diffuse(0, 0, 0, 0.5)
 			else
-				self:diffusealpha(0)
+				self:diffusealpha(1):diffuse(dark)
 			end
 		end
 	end,
