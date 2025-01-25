@@ -125,7 +125,7 @@ local text = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		end
 
 		self:y( -self:GetHeight()/2 + 5 )
-		self:settext( ("%s/%s: %g/%g"):format(THEME:GetString("ScreenGameplay", "PeakNPS"),THEME:GetString("ScreenGameplay", "eBPM"), round(my_peak * SL.Global.ActiveModifiers.MusicRate,2),round(my_peak *15* SL.Global.ActiveModifiers.MusicRate,0)) )
+		self:settext(("%s: %g   "):format(THEME:GetString("ScreenGameplay", "PeakNPS"), round(my_peak * SL.Global.ActiveModifiers.MusicRate,2)) .. ("Peak eBPM: %.0f"):format(round(my_peak * 15 * SL.Global.ActiveModifiers.MusicRate,2)))
 		self:maxwidth(190)
 	end,
 }

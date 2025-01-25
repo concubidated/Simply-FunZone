@@ -154,7 +154,6 @@ af2[#af2+1] = Def.ActorFrame{
 			--let's give some padding so the text doesn't touch the outer edges of this box
 			self:maxwidth(width/textZoom-10):zoom(textZoom)
 			self:addy(-6)
-			self:queuecommand("MarqueeFlash")
 		end,
 		HideCommand=function(self)
 			self:settext("")
@@ -168,12 +167,6 @@ af2[#af2+1] = Def.ActorFrame{
 				minimization_level = minimization_level + 1
 			end
 		end,
-		-- MarqueeFlashCommand=function(self)
-		-- 	self:sleep(1.75):linear(0.25):diffusealpha(0):sleep(1.75):linear(0.25):diffusealpha(1):queuecommand("MarqueeFlash")
-		-- end,
-		-- OffCommand=function(self)
-		-- 	self:stoptweening()
-		-- end,
 	},
 
 	-- Peak NPS/eBPM
@@ -185,7 +178,6 @@ af2[#af2+1] = Def.ActorFrame{
 			local textZoom = 0.8
 			--let's give some padding so the text doesn't touch the outer edges of this box
 			self:maxwidth(width/textZoom-10):zoom(textZoom):diffusealpha(0)
-			self:queuecommand("MarqueeFlash")
 		end,
 		HideCommand=function(self)
 			self:settext("")
@@ -203,12 +195,6 @@ af2[#af2+1] = Def.ActorFrame{
 				self:settext(("Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("   Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
 			end
 		end,
-		-- MarqueeFlashCommand=function(self)
-		-- 	self:sleep(1.75):linear(0.25):diffusealpha(1):sleep(1.75):linear(0.25):diffusealpha(0):queuecommand("MarqueeFlash")
-		-- end,
-		-- OffCommand=function(self)
-		-- 	self:stoptweening()
-		-- end,
 	}
 }
 
@@ -230,27 +216,29 @@ local layout = {
  }
 
  af3[#af3+1] = LoadFont("Common normal")..{
- 	Text="",
- 	Name="Total Stream",
- 	InitCommand=function(self)
- 		local textHeight = 17
- 		local textZoom = 0.65
- 		self:zoom(textZoom):horizalign(center)
- 		self:maxwidth(width/textZoom)
- 		self:y(-height/2 - 6)
- 	end,
- 	HideCommand=function(self)
- 		self:settext("")
- 	end,
- 	RedrawCommand=function(self)
- 		local streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(pn)
- 		local totalMeasures = streamMeasures + breakMeasures
- 		if streamMeasures == 0 then
- 			self:settext(("   Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate))
- 		else
- 			self:settext("Total Stream: " .. string.format("%d/%d (%0.1f%%)", streamMeasures, totalMeasures, streamMeasures/totalMeasures*100) .. ("   Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate))
- 		end
- 	end
+	Text="",
+	Name="Total Stream",
+	InitCommand=function(self)
+		local textHeight = 17
+		local textZoom = 0.65
+		self:zoom(textZoom):horizalign(center)
+		--let's give some padding so the text doesn't touch the outer edges of this box
+		self:maxwidth(width/textZoom-10)
+		self:y(-height/2 - 6)
+		-- self:diffuse(Color.Black)
+	end,
+	HideCommand=function(self)
+		self:settext("")
+	end,
+	RedrawCommand=function(self)
+		local streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(pn)
+		local totalMeasures = streamMeasures + breakMeasures
+		if streamMeasures == 0 then
+			self:settext(("   Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
+		else
+			self:settext("Total Stream: " .. string.format("%d/%d (%0.1f%%)", streamMeasures, totalMeasures, streamMeasures/totalMeasures*100) .. ("   Peak NPS: %.1f   "):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate) .. ("Peak eBPM: %.0f"):format(SL[pn].Streams.PeakNPS * SL.Global.ActiveModifiers.MusicRate * 15))
+		end
+	end
  }
 
 local colSpacing = 150
