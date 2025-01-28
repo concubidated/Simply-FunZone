@@ -148,9 +148,9 @@ local LeaderboardRequestProcessor = function(res, master)
 		boogie_ex = true
 	end
 	if not SCREENMAN:GetTopScreen():GetChild("Overlay") then return end
-	local gsBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("ScoreBox" .. pn):GetChild("GrooveStatsLogo")
-	local bsBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("ScoreBox" .. pn):GetChild("BoogieStatsLogo")
-	local bsExBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("ScoreBox" .. pn):GetChild("BoogieStatsEXLogo")
+	local gsBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("GroupPanes"..pn):GetChild("ScoreBox" .. pn):GetChild("GrooveStatsLogo")
+	local bsBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("GroupPanes"..pn):GetChild("ScoreBox" .. pn):GetChild("BoogieStatsLogo")
+	local bsExBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("GroupPanes"..pn):GetChild("ScoreBox" .. pn):GetChild("BoogieStatsEXLogo")
 
 	if boogie then
 		style_color[0] = BoogieStatsPurple
