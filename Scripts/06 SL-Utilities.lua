@@ -256,11 +256,11 @@ function SetPreferredSong()
 			song = prof:GetLastPlayedSong()
 			if song ~= nil then
 					lastPlayed = true
+					GAMESTATE:SetPreferredSong( song )
 			end
 		end
 	
 		if not lastPlayed then
-	
 			local path = THEME:GetCurrentThemeDirectory() .. "Other/ITG-Mode-DefaultSongs.txt"
 			local song_list = shuffle(GetFileContents(path))
 	
