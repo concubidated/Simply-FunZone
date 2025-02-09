@@ -116,24 +116,26 @@ for i, column in ipairs( cols ) do
 				}
 			end
 
-			if judgment == "W4" or judgment == "W5" then
-				af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
-					Text=SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].column_judgments[i]["Early"][judgment],
-					InitCommand=function(self)
-						self:xy(_x - 1, j*row_height - 6):zoom(0.65):halign(1)
-					end,
-					OnCommand=function(self)
-						if track_earlyjudgments then
-							self:halign(-1):x( self:GetX() )
-						else
-							if judge_bmt[j] ~= nil then
-								self:x( self:GetX() - judge_bmt[j]:GetWidth()/2 )
+			if IsITGmania() then
+				if judgment == "W4" or judgment == "W5" then
+					af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
+						Text=SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].column_judgments[i]["Early"][judgment],
+						InitCommand=function(self)
+							self:xy(_x - 1, j*row_height - 6):zoom(0.65):halign(1)
+						end,
+						OnCommand=function(self)
+							if track_earlyjudgments then
+								self:halign(-1):x( self:GetX() )
+							else
+								if judge_bmt[j] ~= nil then
+									self:x( self:GetX() - judge_bmt[j]:GetWidth()/2 )
+								end
 							end
 						end
-					end
-				}
+					}
+				end
 			end
-			
+
 			if track_foot and (i == 2 or i == 3) then
 				if judgment == "W4" or judgment == "W5" or judgment == "Miss" then
 					af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{

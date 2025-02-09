@@ -464,12 +464,15 @@ ValidForGrooveStats = function(player)
 	-- AutoPlay/AutoplayCPU is not allowed
 	valid[12] = IsHumanPlayer(player)
 
+	-- separate OutFox from other Stepmania clients, juuuuuuust in case
 	local minTNSToScoreNores = function()
 		if IsOutFox() then 
 			return "W3" 
-		else 
+		elseif IsITGmania() then
 			ToEnumShortString(PREFSMAN:GetPreference("MinTNSToScoreNotes"))
-		end		
+		else
+			return "W3"
+		end
 	end
 
 	if SL.Global.GameMode == "ITG" then

@@ -78,9 +78,11 @@ local GetRescoredJudgmentCounts = function(player)
 		["wayOff"] = 0
 	}
 	
-	for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
-		for window, name in pairs(translation) do
-			rescored[name] = rescored[name] + SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].column_judgments[i]["Early"][window]
+	if IsITGmania() then
+		for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
+			for window, name in pairs(translation) do
+				rescored[name] = rescored[name] + SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].column_judgments[i]["Early"][window]
+			end
 		end
 	end
 
@@ -234,11 +236,17 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 					local personalRank = nil
 					local showExScore = SL["P"..side].ActiveModifiers.ShowEXScore and data[playerStr]["exLeaderboard"]
 
-					local leaderboardData = nil
-					if showExScore then
-						leaderboardData = data[playerStr]["exLeaderboard"]
-					elseif data[playerStr]["gsLeaderboard"] then
-						leaderboardData = data[playerStr]["gsLeaderboard"]
+					if IsITGmania() then
+						local leaderboardData = nil
+						if showExScore then
+							leaderboardData = data[playerStr]["exLeaderboard"]
+						elseif data[playerStr]["gsLeaderboard"] then
+							leaderboardData = data[playerStr]["gsLeaderboard"]
+						end
+					else
+						local leaderboardData = data[playerStr] and (
+							showExScore and data[playerStr]["exLeaderboard"] or data[playerStr]["gsLeaderboard"]
+						)
 					end
 
 					if leaderboardData then
@@ -534,7 +542,6 @@ local af = Def.ActorFrame {
 				-- Unjoined players won't have the text displayed.
 				self:GetParent():GetChild("P1SubmitText"):settext("Submitting ...")
 				self:GetParent():GetChild("P2SubmitText"):settext("Submitting ...")
-
 				self:playcommand("MakeGrooveStatsRequest", {
 					endpoint="score-submit.php?"..NETWORK:EncodeQueryParameters(query),
 					method="POST",

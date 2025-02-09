@@ -347,6 +347,7 @@ af[#af+1] = RequestResponseActor(17, 50)..{
 		-- This makes sure that the Hash in the ChartInfo cache exists.
 		local sendRequest = false
 		local headers = {}
+		-- hopefully maxLeaderboardResults doesn't cause issues in SM5 or OutFox? I don't know where this is defined, maybe it's an arg passed to GrooveStats?
 		local query = {
 			maxLeaderboardResults=NumEntries,
 		}

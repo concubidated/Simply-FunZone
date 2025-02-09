@@ -145,9 +145,16 @@ local GlobalDefaults = {
 		-- since the initialize() function is called every game cycle, the idea
 		-- is to define variables we want to reset every game cycle inside
 		initialize = function(self)
-			self.ActiveModifiers = {
-				MusicRate = 1.0,
-			}
+			if IsITGmania() then
+				self.ActiveModifiers = {
+					MusicRate = 1.0,
+				}
+			else
+				self.ActiveModifiers = {
+					MusicRate = 1.0,
+					TimingWindows = {true, true, true, true, true},
+				}
+			end
 			self.Stages = {
 				PlayedThisGame = 0,
 				Restarts = 0,
@@ -294,7 +301,13 @@ SL = {
 			RegenComboAfterMiss=5,
 			MaxRegenComboAfterMiss=10,
 			MinTNSToHideNotes="TapNoteScore_W3",
-			MinTNSToScoreNotes=ThemePrefs.Get("RescoreEarlyHits") and "TapNoteScore_W3" or "TapNoteScore_None",
+			-- auto-enable preference for hit-rescoring (ITGmania only)
+			MinTNSToScoreNotes=function()
+				if IsITGmania() then
+					return ThemePrefs.Get("RescoreEarlyHits") and "TapNoteScore_W3" or "TapNoteScore_None"
+				else return ""
+				end
+			end,
 			HarshHotLifePenalty=true,
 
 			PercentageScoring=true,
@@ -315,7 +328,13 @@ SL = {
 			RegenComboAfterMiss=5,
 			MaxRegenComboAfterMiss=10,
 			MinTNSToHideNotes="TapNoteScore_W4",
-			MinTNSToScoreNotes=ThemePrefs.Get("RescoreEarlyHits") and "TapNoteScore_W4" or "TapNoteScore_None",
+			-- auto-enable preference for hit-rescoring (ITGmania only)
+			MinTNSToScoreNotes=function()
+				if IsITGmania() then
+					return ThemePrefs.Get("RescoreEarlyHits") and "TapNoteScore_W3" or "TapNoteScore_None"
+				else return ""
+				end
+			end,
 			HarshHotLifePenalty=true,
 
 			PercentageScoring=true,

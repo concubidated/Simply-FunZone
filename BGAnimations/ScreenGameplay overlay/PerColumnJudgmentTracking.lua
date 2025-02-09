@@ -28,95 +28,163 @@ local PlayerState = GAMESTATE:GetPlayerState(player)
 local streams = SL[ToEnumShortString(player)].Streams
 local foot
 for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
-	-- W4 and W5 are the early decent/way offs itself.
-	-- W0-W3 are for indicating what the early hits were rescored to.
-	judgments[#judgments+1] = { W0=0, W1=0, W2=0, W3=0, W4=0, W5=0, Miss=0, MissBecauseHeld=0, Early={ W0=0, W1=0, W2=0, W3=0, W4=0, W5=0 }, W1early=0, W2early=0, W3early=0, W4early=0, W5early=0, W4lf=0, W4rf=0, W5lf=0, W5rf=0, Misslf=0, Missrf=0 }
+	if IsITGmania() then
+		-- W4 and W5 are the early decent/way offs itself.
+		-- W0-W3 are for indicating what the early hits were rescored to.
+		judgments[#judgments+1] = { W0=0, W1=0, W2=0, W3=0, W4=0, W5=0, Miss=0, MissBecauseHeld=0, Early={ W0=0, W1=0, W2=0, W3=0, W4=0, W5=0 }, W1early=0, W2early=0, W3early=0, W4early=0, W5early=0, W4lf=0, W4rf=0, W5lf=0, W5rf=0, Misslf=0, Missrf=0 }
+	else
+		judgments[#judgments+1] = { W0=0, W1=0, W2=0, W3=0, W4=0, W5=0, Miss=0 }
+	end
 end
 
-return Def.Actor{
-	OffCommand=function(self)
-		local storage = SL[ToEnumShortString(player)].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1]
-		storage.column_judgments = judgments
-	end,
-	JudgmentMessageCommand=function(self, params)
-		local health_state = GAMESTATE:GetPlayerState(params.Player):GetHealthState()
-		if params.Player == player and params.Notes and health_state ~= 'HealthState_Dead' then
-			for col,tapnote in pairs(params.Notes) do
-				local tnt = ToEnumShortString(tapnote:GetTapNoteType())
+if IsITGmania() then
+	return Def.Actor{
+		OffCommand=function(self)
+			local storage = SL[ToEnumShortString(player)].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1]
+			storage.column_judgments = judgments
+		end,
+		JudgmentMessageCommand=function(self, params)
+			local health_state = GAMESTATE:GetPlayerState(params.Player):GetHealthState()
+			if params.Player == player and params.Notes and health_state ~= 'HealthState_Dead' then
+				for col,tapnote in pairs(params.Notes) do
+					local tnt = ToEnumShortString(tapnote:GetTapNoteType())
 
-				-- we don't want to consider TapNoteTypes like Mine, HoldTail, Attack, etc. when counting judgments
-				-- we do want to consider normal tapnotes, hold heads, and lifts
-				-- see: https://quietly-turning.github.io/Lua-For-SM5/LuaAPI#Enums-TapNoteType
-				if tnt == "Tap" or tnt == "HoldHead" or tnt == "Lift" then
-					local tns = ToEnumShortString(params.TapNoteScore)
-					
-					-- This was a rescored hit. Track what it was rescored to.
-					if params.EarlyTapNoteScore ~= nil then
-						local etns = ToEnumShortString(params.EarlyTapNoteScore)
+					-- we don't want to consider TapNoteTypes like Mine, HoldTail, Attack, etc. when counting judgments
+					-- we do want to consider normal tapnotes, hold heads, and lifts
+					-- see: https://quietly-turning.github.io/Lua-For-SM5/LuaAPI#Enums-TapNoteType
+					if tnt == "Tap" or tnt == "HoldHead" or tnt == "Lift" then
+						local tns = ToEnumShortString(params.TapNoteScore)
 						
-						if etns ~= "None" then
-							if IsW0Judgment(params, player) then
-								judgments[col]["Early"]["W0"] = judgments[col]["Early"]["W0"] + 1
-							elseif tns ~= "W4" and tns ~= "W5" and tns ~= "Miss" then
-								judgments[col]["Early"][tns] = judgments[col]["Early"][tns] + 1
+						-- This was a rescored hit. Track what it was rescored to.
+						if params.EarlyTapNoteScore ~= nil then
+							local etns = ToEnumShortString(params.EarlyTapNoteScore)
+							
+							if etns ~= "None" then
+								if IsW0Judgment(params, player) then
+									judgments[col]["Early"]["W0"] = judgments[col]["Early"]["W0"] + 1
+								elseif tns ~= "W4" and tns ~= "W5" and tns ~= "Miss" then
+									judgments[col]["Early"][tns] = judgments[col]["Early"][tns] + 1
+								end
+
+								-- What was it rescored from?
+								-- Note that jumps are not rescored, so we don't need to worry about double counting them.
+								judgments[col]["Early"][etns] = judgments[col]["Early"][etns] + 1
 							end
+						end
+						
+						if mods.ShowFaPlusWindow and mods.ShowFaPlusPane and IsW0Judgment(params, player) then
+							tns = "W0"
+						end
+						judgments[col][tns] = judgments[col][tns] + 1
 
-							-- What was it rescored from?
-							-- Note that jumps are not rescored, so we don't need to worry about double counting them.
-							judgments[col]["Early"][etns] = judgments[col]["Early"][etns] + 1
+						if tapnote:GetTapNoteResult().GetHeld then
+							if tnt ~= "Lift" and tns == "Miss" and tapnote:GetTapNoteResult():GetHeld() then
+								judgments[col].MissBecauseHeld = judgments[col].MissBecauseHeld + 1
+							end
 						end
-					end
-					
-					if mods.ShowFaPlusWindow and mods.ShowFaPlusPane and IsW0Judgment(params, player) then
-						tns = "W0"
-					end
-					judgments[col][tns] = judgments[col][tns] + 1
-
-					if tapnote:GetTapNoteResult().GetHeld then
-						if tnt ~= "Lift" and tns == "Miss" and tapnote:GetTapNoteResult():GetHeld() then
-							judgments[col].MissBecauseHeld = judgments[col].MissBecauseHeld + 1
+						
+						if params.TapNoteOffset < 0 then
+							if tns == "W1" and SL[pn].ActiveModifiers.ShowFaPlusWindow and not IsW0Judgment(params, player) then
+								judgments[col].W1early = judgments[col].W1early + 1
+							elseif tns ~= "W1" and tns ~= "W0" then
+								judgments[col][tns .. "early"] = judgments[col][tns .. "early"] + 1
+							end
 						end
-					end
-					
-					if params.TapNoteOffset < 0 then
-						if tns == "W1" and SL[pn].ActiveModifiers.ShowFaPlusWindow and not IsW0Judgment(params, player) then
-							judgments[col].W1early = judgments[col].W1early + 1
-						elseif tns ~= "W1" and tns ~= "W0" then
-							judgments[col][tns .. "early"] = judgments[col][tns .. "early"] + 1
+						
+						if col == 1 then
+							foot=true
+						elseif col == 4 then
+							foot=false
+						else
+							foot = not foot
 						end
-					end
-					
-					if col == 1 then
-						foot=true
-					elseif col == 4 then
-						foot=false
-					else
-						foot = not foot
-					end
-					if col == 2 or col == 3 then
-						if tns == "W4" or tns == "W5" or tns == "Miss" then
-							local isStream = false
-							if streams.Measures and #streams.Measures > 0 then
-								local currMeasure = (math.floor(PlayerState:GetSongPosition():GetSongBeatVisible()))/4
-								for i=1,#streams.Measures do
-									run = streams.Measures[i]
-									if currMeasure >= run.streamStart and currMeasure <= run.streamEnd and not run.isBreak then
-										isStream = true
-										break
-									elseif currMeasure < run.streamStart then
-										break
+						if col == 2 or col == 3 then
+							if tns == "W4" or tns == "W5" or tns == "Miss" then
+								local isStream = false
+								if streams.Measures and #streams.Measures > 0 then
+									local currMeasure = (math.floor(PlayerState:GetSongPosition():GetSongBeatVisible()))/4
+									for i=1,#streams.Measures do
+										run = streams.Measures[i]
+										if currMeasure >= run.streamStart and currMeasure <= run.streamEnd and not run.isBreak then
+											isStream = true
+											break
+										elseif currMeasure < run.streamStart then
+											break
+										end
 									end
 								end
-							end
-							
-							if isStream then
-								local fs = foot and "lf" or "rf"
-								judgments[col][tns .. fs] = judgments[col][tns .. fs] + 1
+								
+								if isStream then
+									local fs = foot and "lf" or "rf"
+									judgments[col][tns .. fs] = judgments[col][tns .. fs] + 1
+								end
 							end
 						end
 					end
 				end
 			end
 		end
+	}
+else
+	local actor = Def.Actor{
+		OffCommand=function(self)
+			local storage = SL[ToEnumShortString(player)].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1]
+			storage.column_judgments = judgments
+		end
+	}
+	-- add MissBecauseHeld as a possible judgment for all columns
+	for i,col_judgments in ipairs(judgments) do
+		col_judgments.MissBecauseHeld=0
 	end
-}
+	local buttons = {}
+	local style = GAMESTATE:GetCurrentStyle()
+	local num_columns = style:ColumnsPerPlayer()
+	for i=1,num_columns do
+		local col = style:GetColumnInfo(player, i)
+		table.insert(buttons, col.Name)
+	end
+	local held = {}
+	-- initialize to handle both players, regardless of whether both are actually joined.
+	-- the engine's InputCallback gives you ALL input, so even if only P1 is joined, the
+	-- InputCallback will report someone spamming input on P2 as valid events, so we have
+	-- to ensure that doesn't cause Lua errors here
+	for player in ivalues( PlayerNumber ) do
+		held[player] = {}
+		-- initialize all buttons available to this game for this player to be "not held"
+		for button in ivalues(buttons) do
+			held[player][button] = false
+		end
+	end
+	local InputHandler = function(event)
+		-- if any of these, don't attempt to handle input
+		if not event.PlayerNumber or not event.button then return false end
+		if event.type == "InputEventType_FirstPress" then
+			held[event.PlayerNumber][event.button] = true
+		elseif event.type == "InputEventType_Release" then
+			held[event.PlayerNumber][event.button] = false
+		end
+	end
+	actor.OnCommand=function(self) SCREENMAN:GetTopScreen():AddInputCallback( InputHandler ) end
+	actor.JudgmentMessageCommand=function(self, params)
+		local health_state = GAMESTATE:GetPlayerState(params.Player):GetHealthState()
+		if params.Player == player and params.Notes and health_state ~= 'HealthState_Dead' then
+			for col,tapnote in pairs(params.Notes) do
+				local tnt = tapnote:GetTapNoteType()
+				-- we don't want to consider TapNoteTypes like Mine, HoldTail, Attack, etc. when counting judgments
+				-- we do want to consider normal tapnotes, hold heads, and lifts
+				-- see: https://quietly-turning.github.io/Lua-For-SM5/LuaAPI#Enums-TapNoteType
+				if tnt == "TapNoteType_Tap" or tnt == "TapNoteType_HoldHead" or tnt == "TapNoteType_Lift" then
+					local tns = ToEnumShortString(params.TapNoteScore)
+					if mods.ShowFaPlusWindow and mods.ShowFaPlusPane and IsW0Judgment(params, player) then
+						tns = "W0"
+					end
+					judgments[col][tns] = judgments[col][tns] + 1
+					if tns == "Miss" and held[params.Player][ buttons[col] ] then
+						judgments[col].MissBecauseHeld = judgments[col].MissBecauseHeld + 1
+					end
+				end
+			end
+		end
+	end
+	return actor
+end

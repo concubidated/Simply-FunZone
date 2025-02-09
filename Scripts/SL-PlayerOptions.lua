@@ -838,58 +838,89 @@ local Overrides = {
 			t[idx] = THEME:GetString(tns,"W1").."s + "..THEME:GetString(tns,"W2").."s"
 			return t
 		end,
+		-- OneChoiceForAllPlayers = IsITGmania() and false or true,
+		OneChoiceForAllPlayers = function()
+			if IsITGmania() then
+				return false
+			else
+				return true
+			end
+		end,
 		LoadSelections = function(self, list, pn)
-			local mods, playeroptions = GetModsAndPlayerOptions(pn)
+			if IsITGmania() then
+				local mods, playeroptions = GetModsAndPlayerOptions(pn)
 
-			-- First determine the set of actual enabled windows.
-			local windows = {true,true,true,true,true}
-			if not IsOutFox() then
-				local disabledWindows = playeroptions:GetDisabledTimingWindows()
-				for w in ivalues(disabledWindows) do
-					windows[tonumber(ToEnumShortString(w):sub(-1))] = false
+				-- First determine the set of actual enabled windows.
+				local windows = {true,true,true,true,true}
+				if not IsOutFox() then
+					local disabledWindows = playeroptions:GetDisabledTimingWindows()
+					for w in ivalues(disabledWindows) do
+						windows[tonumber(ToEnumShortString(w):sub(-1))] = false
+					end
 				end
-			end
 
-			-- Compare them to any of our available selections
-			local matched = false
-			for i=1,#list do
-				local all_match = true
-				for w,window in ipairs(windows) do
-					if window ~= self.Values[i][w] then all_match = false; break end
+				-- Compare them to any of our available selections
+				local matched = false
+				for i=1,#list do
+					local all_match = true
+					for w,window in ipairs(windows) do
+						if window ~= self.Values[i][w] then all_match = false; break end
+					end
+					if all_match then
+						matched = true
+						list[i] = true
+						mods.TimingWindows = windows
+						break
+					end
 				end
-				if all_match then
-					matched = true
-					list[i] = true
-					mods.TimingWindows = windows
-					break
-				end
-			end
 
-			-- It's possible one may have manipulated the available windows through playeroptions elsewhere.
-			-- If the TimingWindows set via LoadSelections is not one of our valid choices then default
-			-- to a known value (all windows enabled).
-			if not matched then
-				mods.TimingWindows = {true,true,true,true,true}
-				playeroptions:ResetDisabledTimingWindows()
-				list[1] = true
+				-- It's possible one may have manipulated the available windows through playeroptions elsewhere.
+				-- If the TimingWindows set via LoadSelections is not one of our valid choices then default
+				-- to a known value (all windows enabled).
+				if not matched then
+					mods.TimingWindows = {true,true,true,true,true}
+					playeroptions:ResetDisabledTimingWindows()
+					list[1] = true
+				end
+				return list
+			else
+				local windows = SL.Global.ActiveModifiers.TimingWindows
+				for i=1,#list do
+					local all_match = true
+					for w,window in ipairs(windows) do
+						if window ~= self.Values[i][w] then all_match = false; break end
+					end
+					if all_match then list[i] = true; break end
+				end
+				return list
 			end
-			return list
 		end,
 		SaveSelections = function(self, list, pn)
 			local mods, playeroptions = GetModsAndPlayerOptions(pn)
-			if not IsOutFox() then
+			local gmods = SL.Global.ActiveModifiers
 				for i=1,#list do
 					if list[i] then
-						mods.TimingWindows = self.Values[i]
-						playeroptions:ResetDisabledTimingWindows()
-						for i,enabled in ipairs(mods.TimingWindows) do
-							if not enabled then
-								playeroptions:DisableTimingWindow("TimingWindow_W"..i)
+						if IsITGmania() then
+							mods.TimingWindows = self.Values[i]
+							playeroptions:ResetDisabledTimingWindows()
+							for i,enabled in ipairs(mods.TimingWindows) do
+								if not enabled then
+									playeroptions:DisableTimingWindow("TimingWindow_W"..i)
+								end
+							end
+						else
+							gmods.TimingWindows = self.Values[i]
+							for w=1,NumJudgmentsAvailable() do
+								if self.Values[i][w] then
+									PREFSMAN:SetPreference("TimingWindowSecondsW"..w, SL.Preferences[SL.Global.GameMode]["TimingWindowSecondsW"..w])
+								else
+									local prev = (w > 1 and PREFSMAN:GetPreference("TimingWindowSecondsW"..(w-1)) or -math.abs(SL.Preferences[SL.Global.GameMode].TimingWindowAdd))
+									PREFSMAN:SetPreference("TimingWindowSecondsW"..w, prev)
+								end
 							end
 						end
 					end
 				end
-			end
 		end
 	},
 	-------------------------------------------------------------------------

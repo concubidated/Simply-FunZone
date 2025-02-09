@@ -46,47 +46,49 @@ ParseChartInfo(steps, pn)
 local hash = SL[pn].Streams.Hash
 local hash_version = SL.GrooveStats.ChartHashVersion
 
-local rescored = {
-  W0 = 0,
-  W1 = 0,
-  W2 = 0,
-  W3 = 0,
-  W4 = 0,
-  W5 = 0
-}
+if IsITGmania() then
+  local rescored = {
+    W0 = 0,
+    W1 = 0,
+    W2 = 0,
+    W3 = 0,
+    W4 = 0,
+    W5 = 0
+  }
 
-local rows = { "W0", "W1", "W2", "W3", "W4", "W5" }
+  local rows = { "W0", "W1", "W2", "W3", "W4", "W5" }
 
-for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
-  for j, judgment in ipairs(rows) do
-    rescored[judgment] = rescored[judgment] + SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].column_judgments[i]["Early"][judgment]
+  for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
+    for j, judgment in ipairs(rows) do
+      rescored[judgment] = rescored[judgment] + SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].column_judgments[i]["Early"][judgment]
+    end
   end
-end
 
-local rescored_str = ""
+  local rescored_str = ""
 
-if rescored["W0"] > 0 then
-  rescored_str = rescored_str .. "G" .. ("%x"):format(rescored["W0"])
-end
+  if rescored["W0"] > 0 then
+    rescored_str = rescored_str .. "G" .. ("%x"):format(rescored["W0"])
+  end
 
-if rescored["W1"] > 0 then
-  rescored_str = rescored_str .. "H" .. ("%x"):format(rescored["W1"])
-end
+  if rescored["W1"] > 0 then
+    rescored_str = rescored_str .. "H" .. ("%x"):format(rescored["W1"])
+  end
 
-if rescored["W2"] > 0 then
-  rescored_str = rescored_str .. "I" .. ("%x"):format(rescored["W2"])
-end
+  if rescored["W2"] > 0 then
+    rescored_str = rescored_str .. "I" .. ("%x"):format(rescored["W2"])
+  end
 
-if rescored["W3"] > 0 then
-  rescored_str = rescored_str .. "J" .. ("%x"):format(rescored["W3"])
-end
+  if rescored["W3"] > 0 then
+    rescored_str = rescored_str .. "J" .. ("%x"):format(rescored["W3"])
+  end
 
-if rescored["W4"] > 0 then
-  rescored_str = rescored_str .. "K" .. ("%x"):format(rescored["W4"])
-end
+  if rescored["W4"] > 0 then
+    rescored_str = rescored_str .. "K" .. ("%x"):format(rescored["W4"])
+  end
 
-if rescored["W5"] > 0 then
-  rescored_str = rescored_str .. "L" .. ("%x"):format(rescored["W5"])
+  if rescored["W5"] > 0 then
+    rescored_str = rescored_str .. "L" .. ("%x"):format(rescored["W5"])
+  end
 end
 
 return ("HTTPS://GROOVESTATS.COM/QR/%s/T%xG%xH%xI%xJ%xK%sL%sM%xH%xT%xR%xT%xM%xT%x%s/F%sR%xC%sV%x"):format(
