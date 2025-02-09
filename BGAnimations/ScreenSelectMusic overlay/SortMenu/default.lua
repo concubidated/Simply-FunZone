@@ -270,7 +270,8 @@ local wheel_options = {
 	-- Conditions:
 	-- These determine whether or not the option will be displayed.
 	-- For instance: { {"SortBy", "Group"}, GAMESTATE:IsCourseMode() } will only display the Group option in CourseMode.
-	-- You can use any Lua expression that returns a boolean value here.
+	-- You can use any Lua expression that equates to a boolean value here.
+	-- Alternatively, you may provide a function that returns a boolean value for more complex and timely conditions.
 
 	-- Submenus:
 	-- We can create categories within the SortMenu by providing a table as the second element
@@ -360,7 +361,11 @@ local t = Def.ActorFrame {
 						local sub_options = {}
 						for j=1, #option[2] do
 							local sub_option = option[2][j]
-							if sub_option[2] == nil or sub_option[2] == true then
+							if type(sub_option[2]) == "function" then
+								if sub_option[2]() then
+									table.insert(filtered_wheel_options, sub_option[1])
+								end
+							elseif sub_option[2] == nil or sub_option[2] == true then
 								table.insert(filtered_wheel_options, sub_option[1])
 							end
 						end
@@ -457,11 +462,19 @@ local t = Def.ActorFrame {
 					local sub_options = {}
 					for j=1, #option[2] do
 						local sub_option = option[2][j]
-						if sub_option[2] == nil or sub_option[2] == true then
+						if type(sub_option[2]) == "function" then
+							if sub_option[2]() then
+								table.insert(sub_options, sub_option)
+							end
+						elseif sub_option[2] == nil or sub_option[2] == true then
 							table.insert(sub_options, sub_option)
 						end
 					end
 					if #sub_options > 0 then
+						table.insert(filtered_wheel_options, {option[1][1], option[1][2]})
+					end
+				elseif type(option[2]) == "function" then
+					if option[2]() then
 						table.insert(filtered_wheel_options, {option[1][1], option[1][2]})
 					end
 				elseif option[2] == nil or option[2] == true then
