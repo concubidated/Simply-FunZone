@@ -272,6 +272,9 @@ local wheel_options = {
 	-- For instance: { {"SortBy", "Group"}, GAMESTATE:IsCourseMode() } will only display the Group option in CourseMode.
 	-- You can use any Lua expression that equates to a boolean value here.
 	-- Alternatively, you may provide a function that returns a boolean value for more complex and timely conditions.
+		-- Horsey Note:
+		-- if your option doesn't show up on first load of the SortMenu, try using a function to compute its conditional addition to the SortMenu
+		-- this was necessary for some (under what conditions are functions necessary?) of the function based conditionals seen below
 
 	-- Submenus:
 	-- We can create categories within the SortMenu by providing a table as the second element
@@ -281,7 +284,7 @@ local wheel_options = {
 	-- If all submenu items are removed because of a condition, that empty submenu will not appear in the resulting list.
 
 	{ {"WhereforeArtThou", "SongSearch"}, not GAMESTATE:IsCourseMode() and ThemePrefs.Get("KeyboardFeatures") },
-	{ {"GrooveStats", "Leaderboard"}, IsServiceAllowed(SL.GrooveStats.Leaderboard) and GAMESTATE:GetCurrentSong() ~= nil },
+	{ {"GrooveStats", "Leaderboard"}, function() return IsServiceAllowed(SL.GrooveStats.Leaderboard) and GAMESTATE:GetCurrentSong() ~= nil end},
 	{ {"SetSummaryText", "SetSummary"}, SL.Global.Stages.PlayedThisGame > 0 },
 	{ {"ChangeMode", "Casual"}, SL.Global.Stages.PlayedThisGame == 0 and SL.Global.GameMode ~= "Casual" and GAMESTATE:GetCoinMode() ~= "CoinMode_Home"},
 	{ 
@@ -305,9 +308,9 @@ local wheel_options = {
 		{"", "CategoryAdvanced"},
 		{
 			{ {"FeelingSalty", "TestInput"} },
-			{ {"HardTime", "PracticeMode"}, GAMESTATE:IsEventMode() and GAMESTATE:GetCurrentSong() ~= nil and ThemePrefs.Get("KeyboardFeatures")},
+			{ {"HardTime", "PracticeMode"}, function() return GAMESTATE:IsEventMode() and GAMESTATE:GetCurrentSong() ~= nil and ThemePrefs.Get("KeyboardFeatures") end},
 			{ {"TakeABreather", "LoadNewSongs"}, GAMESTATE:IsEventMode() or GAMESTATE:GetCoinMode() == "CoinMode_Home"},
-			{ {"NeedMoreRam", "ViewDownloads"}, DownloadsExist() },
+			{ {"NeedMoreRam", "ViewDownloads"}, DownloadsExist },
 			{ {"NextPlease", "SwitchProfile"}, ThemePrefs.Get("AllowScreenSelectProfile") },
 		}
 	},
@@ -330,7 +333,7 @@ local wheel_options = {
 	-- include the check.
 
 	-- OutFox is not currently compatible with the Favorites system in this theme
-	{ {"ImLovinIt", "AddFavorite"}, GAMESTATE:GetCurrentSong() ~= nil and not IsOutFox() },
+	{ {"ImLovinIt", "AddFavorite"}, function() return GAMESTATE:GetCurrentSong() ~= nil and not IsOutFox() end},
 	{ AddFavorites(), not IsOutFox() },
 }
 
