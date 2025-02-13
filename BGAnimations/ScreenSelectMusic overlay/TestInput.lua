@@ -1,5 +1,5 @@
 local game = GAMESTATE:GetCurrentGame():GetName()
-if not (game=="dance" or game=="pump" or game=="techno") then return end
+if not (game=="dance" or game=="pump" or game=="smx" or game=="techno") then return end
 
 local af = Def.ActorFrame{
 	InitCommand=function(self) self:visible(false) end,

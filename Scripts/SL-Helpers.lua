@@ -152,6 +152,12 @@ local NoteFieldWidth = {
 		-- couple = 256,
 		-- threepanel = 192
 	},
+	smx = {
+		single  = 265,
+		versus  = 530,
+		double6 = 344.5,
+		double10= 556.5,
+	},
 	-- pump's values are very similar to those used in dance, but curiously smaller
 	pump = {
 		single  = 250,
@@ -217,6 +223,7 @@ GetComboThreshold = function( MaintainOrContinue )
 	-- include dummy values here to prevent Lua errors in case players accidentally switch to lights
 	Combo.lights  = { Maintain = "TapNoteScore_W3", Continue = "TapNoteScore_W3" }
 
+	Combo.smx  = { Maintain = "TapNoteScore_W3", Continue = "TapNoteScore_W3" }
 
 	-- handle FA+ for Dance
 	-- should these values change for Pump?  I guess that's up to me.
@@ -951,6 +958,7 @@ end
 local GameAndMenuButtons = {
 	dance = { "Left", "Down", "Up", "Right" },
 	pump  = { "DownLeft", "UpLeft", "Center", "UpRight", "DownRight" },
+	smx   = { "Left", "Down", "Up", "Right" },
 	techno= { "Left", "Down", "Up", "Right" },
 	kb7   = { "Key2", "Key3", "Key5", "Key6" },
 	para  = { "Left", "UpLeft", "Right", "UpRight" },

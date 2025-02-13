@@ -231,9 +231,15 @@ local function GetChangeableStyles(style)
 	and not (PREFSMAN:GetPreference("Premium") == "Premium_Off" 
 	and GAMESTATE:GetCoinMode() == "CoinMode_Pay") then
 		if style == "single" then
-			table.insert(available_styles, {"ChangeStyle", "Double"})
-			if ThemePrefs.Get("AllowDanceSolo") then
-				table.insert(available_styles, {"ChangeStyle", "Solo"})
+			if GAMESTATE:GetCurrentGame():GetName() ~= "smx" then
+				table.insert(available_styles, {"ChangeStyle", "Double"})
+				if ThemePrefs.Get("AllowDanceSolo") then
+					table.insert(available_styles, {"ChangeStyle", "Solo"})
+				end
+			end
+			if GAMESTATE:GetCurrentGame():GetName() == "smx" then
+				table.insert(available_styles, {"ChangeStyle", "Double6"})
+				table.insert(available_styles, {"ChangeStyle", "Double10"})
 			end
 		elseif style == "double" then
 			table.insert(available_styles, {"ChangeStyle", "Single"})
@@ -242,7 +248,15 @@ local function GetChangeableStyles(style)
 			end
 		elseif style == "solo" then
 			table.insert(available_styles, {"ChangeStyle", "Single"})
-			table.insert(available_styles, {"ChangeStyle", "Double"})
+			table.insert(available_styles, {"ChangeStyle", "Double"})			
+			-- smx 6 panel
+			elseif style == "double6" then
+				table.insert(available_styles, {"ChangeStyle", "Single"})
+				table.insert(available_styles, {"ChangeStyle", "Double10"})
+			-- smx 10 panel
+			elseif style == "double10" then
+				table.insert(available_styles, {"ChangeStyle", "Single"})
+				table.insert(available_styles, {"ChangeStyle", "Double6"})
 		-- Couple doesn't have enough content for people to be able to switch into it
 		-- However, if for some reason you end up in couples mode, you should be able to
 		-- escape
@@ -501,7 +515,7 @@ local t = Def.ActorFrame {
 		if GAMESTATE:IsEventMode() then
 			-- Allow players to switch to a TestInput overlay if the current game has visual assets to support it.
 			local game = GAMESTATE:GetCurrentGame():GetName()
-			if (game=="dance" or game=="pump" or game=="techno") then
+			if (game=="dance" or game=="pump" or game=="smx" or game=="techno") and GAMESTATE:IsEventMode() then
 				table.insert(wheel_options, {"FeelingSalty", "TestInput"})
 			end
 		end
