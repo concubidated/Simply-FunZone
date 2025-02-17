@@ -25,8 +25,11 @@ return Def.ActorFrame{
   	Def.Quad{
 		InitCommand=function(self)
 			if SL.Global.GameMode == "Casual" then
-				self:zoomto(131,40)
+				self:zoomto(120,40)
 				self:x(51)
+			elseif GAMESTATE:IsCourseMode() then
+				self:zoomto(118,40)
+				self:x(50.5)
 			else
 				self:zoomto(140.5,40)
 				self:x(40.5)
@@ -59,7 +62,7 @@ return Def.ActorFrame{
 		   self:horizalign(center)
 		   if ThemePrefs.Get("RainbowMode") then self:diffuse(Color.Black) end
 			if SL.Global.GameMode == "Casual" then
-				self:x(51)
+				self:x(50)
 				self:maxwidth(155)
 			elseif GAMESTATE:IsCourseMode() then
 				self:x(55.5)

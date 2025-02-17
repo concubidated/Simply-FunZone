@@ -77,9 +77,14 @@ af[#af+1] = Def.Quad{
 		if ThemePrefs.Get("VisualStyle") == "Technique" then
 			self:diffusealpha(0.5)
 		end
-		if SL.Global.GameMode=="Casual" or GAMESTATE:IsCourseMode() then
+		if SL.Global.GameMode=="Casual" then
 			self:zoom(0.7)
-			self:setsize(banner.width,25)
+			self:setsize(banner.width,32)
+			self:y(-2)
+		elseif GAMESTATE:IsCourseMode() then
+			self:zoom(0.7)
+			self:setsize(banner.width,32)
+			self:y(-3)
 		else
 			self:y(y_offset+68)
 			self:zoom(0.6)
@@ -94,8 +99,14 @@ af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		local songtitle = (GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse():GetDisplayFullTitle()) or GAMESTATE:GetCurrentSong():GetDisplayFullTitle()
 		if songtitle then
 			self:settext(songtitle)
-			if SL.Global.GameMode=="Casual" or GAMESTATE:IsCourseMode() then
+			if SL.Global.GameMode=="Casual" then
 				self:maxwidth(banner.width*0.7)
+				self:y(-3)
+				self:zoom(0.9)
+			elseif GAMESTATE:IsCourseMode() then
+				self:maxwidth(banner.width*0.7)
+				self:y(-5)
+				self:zoom(0.9)
 			else
 				self:maxwidth(banner.width*0.6)
 				self:y(y_offset+52)
