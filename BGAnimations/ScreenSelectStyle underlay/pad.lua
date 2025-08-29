@@ -18,6 +18,7 @@ end
 
 local layouts = {
 	dance    = { false, true,  false, true,  false, true,  false, true,  false },
+	groove   = { false, true,  false, true,  false, true,  false, true,  false },
 	pump     = { true,  false, true,  false, true,  false, true,  false, true  },
 	smx      = { false, true,  false, true,  true,  true,  false, true,  false },
 	double6  = { false, false, false, true,  true,  true,  false, false, false },
@@ -40,6 +41,10 @@ for row=0,2 do
 			local layout = layouts[game] or layouts.dance
 
 			if game=="dance" and style=="solo" then
+				layout = layouts.solo
+			end
+
+			if game=="groove" and style=="solo" then
 				layout = layouts.solo
 			end
 

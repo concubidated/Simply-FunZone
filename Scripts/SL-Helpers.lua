@@ -158,6 +158,16 @@ local NoteFieldWidth = {
 		double6 = 344.5,
 		double10= 556.5,
 	},
+	groove = {
+		single  = 256,
+		versus  = 256,
+		double  = 512,
+		solo    = 384,
+		routine = 512,
+		-- couple and threepanel not supported in Simply Love at this time D:
+		-- couple = 256,
+		-- threepanel = 192
+	},
 	-- pump's values are very similar to those used in dance, but curiously smaller
 	pump = {
 		single  = 250,
@@ -206,6 +216,7 @@ GetComboThreshold = function( MaintainOrContinue )
 
 	local Combo = {}
 	Combo.dance = { Maintain = "TapNoteScore_W3", Continue = "TapNoteScore_W3" }
+	Combo.groove = { Maintain = "TapNoteScore_W3", Continue = "TapNoteScore_W3" }
 	Combo.pump  = { Maintain = "TapNoteScore_W4", Continue = "TapNoteScore_W4" }
 	Combo.techno= { Maintain = "TapNoteScore_W3", Continue = "TapNoteScore_W3" }
 	Combo.kb7   = { Maintain = "TapNoteScore_W4", Continue = "TapNoteScore_W4" }
@@ -957,6 +968,7 @@ end
 -- list of GameButtons that serve double duty as menu buttons when OnlyDedicatedMenuButtons=0
 local GameAndMenuButtons = {
 	dance = { "Left", "Down", "Up", "Right" },
+	groove = { "Left", "Down", "Up", "Right" },
 	pump  = { "DownLeft", "UpLeft", "Center", "UpRight", "DownRight" },
 	smx   = { "Left", "Down", "Up", "Right" },
 	techno= { "Left", "Down", "Up", "Right" },

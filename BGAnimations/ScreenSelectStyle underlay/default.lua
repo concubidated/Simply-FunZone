@@ -30,7 +30,7 @@ local choices = {
 	},
 }
 
-if current_game=="dance" and ThemePrefs.Get("AllowDanceSolo") then
+if (current_game=="dance" or current_game=="groove") and ThemePrefs.Get("AllowDanceSolo") then
 	choices[1].x = _screen.cx - SL_WideScale(210,245)
 	choices[2].x = _screen.cx - SL_WideScale(75,90)
 	choices[3].x = _screen.cx + SL_WideScale(75,90)

@@ -120,6 +120,7 @@ CurrentGameIsSupported = function()
 		dance  = true,
 		pump   = true,
 		smx    = true,
+		groove = true,
 		techno = true,
 		para   = true,
 		kb7    = true
