@@ -319,6 +319,17 @@ local wheel_options = {
 			{ {"SortBy", "TopP2Grades"}, PROFILEMAN:IsPersistentProfile(PLAYER_2) and not IsOutFox() },
 		}
 	},
+	-- this submenu of sort methods contains legacy sort methods from Stepmania that work in OutFox and are functionally similar to the sort method "Meter", which is ITGMania only
+	{
+		{"", "CategoryDifficulties"},
+		{
+			{ {"SortBy", "BeginnerMeter"}},
+			{ {"SortBy", "EasyMeter"}},
+			{ {"SortBy", "MediumMeter"}},
+			{ {"SortBy", "HardMeter"}},
+			{ {"SortBy", "ChallengeMeter"}},
+		}
+	},
 	{
 		{"", "CategoryAdvanced"},
 		{
