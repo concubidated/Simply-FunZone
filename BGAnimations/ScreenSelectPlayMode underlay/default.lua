@@ -51,6 +51,22 @@ local t = Def.ActorFrame{
 		end
 
 		self:queuecommand("Update")
+		if ScreenName == "ScreenSelectPlayMode" then
+			self:queuecommand("CheckMemoryCard")
+		end
+	end,
+	CheckMemoryCardCommand=function(self)
+		if ScreenName ~= "ScreenSelectPlayMode" then return end
+		if not PREFSMAN:GetPreference("MemoryCards") then return end
+		local card_p1 = MEMCARDMAN:GetCardState(PLAYER_1) ~= "MemoryCardState_none"
+		local card_p2 = MEMCARDMAN:GetCardState(PLAYER_2) ~= "MemoryCardState_none"
+		if not card_p1 and not card_p2 then return end
+		-- Memory card in: auto-set cursor to ITG (choice index 1)
+		cursor.index = 1
+		if TopScreen.SetSelectionIndex then
+			TopScreen:SetSelectionIndex(GAMESTATE:GetMasterPlayerNumber(), 1)
+		end
+		self:queuecommand("Update")
 	end,
 	OffCommand=function(self)
 		if ScreenName=="ScreenSelectPlayMode" or ScreenName=="ScreenSelectPlayModeThonk" then
