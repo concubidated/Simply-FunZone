@@ -641,9 +641,10 @@ local Overrides = {
 		SaveSelections = function(self, list, pn)
 			local mods, playeroptions = GetModsAndPlayerOptions(pn)
 
-			for i=1,#self.Choices do
+			for i=1,#self.Values do
 				if list[i] then
-					mods.MeasureLines = self.Choices[i]
+					mods.MeasureLines = self.Values[i]
+					break
 				end
 			end
 		end

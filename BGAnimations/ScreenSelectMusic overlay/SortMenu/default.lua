@@ -246,17 +246,9 @@ local t = Def.ActorFrame {
 			{"SortBy", "Artist"},
 			{"SortBy", "Genre"},
 			{"SortBy", "BPM"},
-			{"SortBy", "Length"},
-			{"SortBy", "Meter"},
 		}
-		table.insert(wheel_options, {"SortBy", "Popularity"})
 		table.insert(wheel_options, {"SortBy", "Recent"})
-		-- Loop through players and add their TopGrades to the wheel options if they've a profile
-		for player in ivalues(GAMESTATE:GetHumanPlayers()) do
-			if (PROFILEMAN:IsPersistentProfile(player)) then
-				table.insert(wheel_options, {"SortBy", "Top".. ToEnumShortString(player).."Grades" })
-			end
-		end
+
 		-- Allow players to switch from single to double and from double to single
 		-- but only present these options if Joint Double or Joint Premium is enabled
 		if not (PREFSMAN:GetPreference("Premium") == "Premium_Off" and GAMESTATE:GetCoinMode() == "CoinMode_Pay") then
@@ -319,31 +311,12 @@ local t = Def.ActorFrame {
 			end
 		end
 
-		table.insert(wheel_options, {"TakeABreather", "LoadNewSongs"})
-
-		-- Only display the View Downloads option if we're connected to
-		-- GrooveStats and Auto-Downloads are enabled.
-		if SL.GrooveStats.IsConnected and ThemePrefs.Get("AutoDownloadUnlocks") then
-			table.insert(wheel_options, {"NeedMoreRam", "ViewDownloads"})
-		end
-
 		-- The relevant Leaderboard.lua actor is only added if these same conditions are met.
 		if IsServiceAllowed(SL.GrooveStats.Leaderboard) then
 			-- Also only add this if we're actually hovering over a song.
 			if GAMESTATE:GetCurrentSong() then
 				table.insert(wheel_options, {"GrooveStats", "Leaderboard"})
 			end
-		end
-
-		if not GAMESTATE:IsCourseMode() then
-			if ThemePrefs.Get("KeyboardFeatures") then
-				-- Only display this option if keyboard features are enabled
-				table.insert(wheel_options, {"WhereforeArtThou", "SongSearch"})
-			end
-		end
-
-		if ThemePrefs.Get("AllowScreenSelectProfile") then
-			table.insert(wheel_options, {"NextPlease", "SwitchProfile"})
 		end
 
 		if GAMESTATE:GetCurrentSong() ~= nil then

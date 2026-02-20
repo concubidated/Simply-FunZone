@@ -118,14 +118,27 @@ return function(event)
 
 	if not (event and event.PlayerNumber and event.button) then return false end
 
+	-- Broadcast so the Test Input pane (Pane 6) can show button feedback.
+	if event.type ~= "InputEventType_Repeat" then
+		MESSAGEMAN:Broadcast("TestInputEvent", event)
+	end
+
+	if not (event.GameButton == "MenuRight" or event.GameButton == "MenuLeft") then return false end
+
 	-- get a "controller number" and an "other controller number"
 	-- if the input event came from GameController_1, cn will be 1 and ocn will be 2
 	-- if the input event came from GameController_2, cn will be 2 and ocn will be 1
-	--
-	-- we'll use these integers to index the active_pane table, which keeps track
-	-- of which pane is currently showing on each side
-	local  cn = tonumber(ToEnumShortString(event.controller))
-	local ocn = tonumber(ToEnumShortString(OtherController[event.controller]))
+	-- fallback: derive from PlayerNumber when event.controller is nil (e.g. some OutFox configs)
+	local cn, ocn
+	if event.controller and OtherController[event.controller] then
+		local other = OtherController[event.controller]
+		cn  = tonumber(ToEnumShortString(event.controller))
+		ocn = tonumber(ToEnumShortString(other))
+	else
+		cn  = (event.PlayerNumber == PLAYER_1) and 1 or 2
+		ocn = 3 - cn
+	end
+	if not panes[cn] then return false end
 
 
 	if event.type == "InputEventType_FirstPress" and panes[cn] then
@@ -199,10 +212,6 @@ return function(event)
 
 			af:queuecommand("PaneSwitch")
 		end
-	end
-
-	if PREFSMAN:GetPreference("OnlyDedicatedMenuButtons") and event.type ~= "InputEventType_Repeat" then
-		MESSAGEMAN:Broadcast("TestInputEvent", event)
 	end
 
 	return false

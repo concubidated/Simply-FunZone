@@ -355,66 +355,6 @@ ValidForGrooveStats = function(player)
 	-- Originally verify the ComboToRegainLife metrics.
 	valid[7] = (PREFSMAN:GetPreference("RegenComboAfterMiss") == 5 and PREFSMAN:GetPreference("MaxRegenComboAfterMiss") == 10)
 
-	local FloatEquals = function(a, b)
-		return math.abs(a-b) < 0.0001
-	end
-
-	valid[7] = valid[7] and FloatEquals(THEME:GetMetric("LifeMeterBar", "InitialValue"), 0.5)
-	valid[7] = valid[7] and PREFSMAN:GetPreference("HarshHotLifePenalty")
-
-	-- And then verify the windows themselves.
-	local TWA = PREFSMAN:GetPreference("TimingWindowAdd")
-	if SL.Global.GameMode == "ITG" then
-		for i, window in ipairs(TimingWindows) do
-			-- Only check if the Timing Window is actually "enabled".
-			if i > 5 or SL[pn].ActiveModifiers.TimingWindows[i] then
-				valid[7] = valid[7] and FloatEquals(PREFSMAN:GetPreference("TimingWindowSeconds"..window) + TWA, ExpectedWindows[i])
-			end
-		end
-
-		for i, window in ipairs(LifeWindows) do
-			valid[7] = valid[7] and FloatEquals(THEME:GetMetric("LifeMeterBar", "LifePercentChange"..window), ExpectedLife[i])
-
-			valid[7] = valid[7] and THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeight"..window) == ExpectedScoreWeight[i]
-		end
-	elseif SL.Global.GameMode == "FA+" then
-		for i, window in ipairs(TimingWindows) do
-			-- This handles the "offset" for the FA+ window, while also retaining the correct indices for Holds/Mines/Rolls
-			-- i idx
-			-- 1  * - FA+ (idx doesn't matter as we explicitly handle the i == 1 case)
-			-- 2  1 - Fantastic
-			-- 3  2 - Excellent
-			-- 4  3 - Greats
-			-- 5  4 - Decents
-			-- 6  6 - Holds (notice how we skipped idx == 5, which would've been the Way Off window)
-			-- 7  7 - Mines
-			-- 8  8 - Rolls
-			-- Only check if the Timing Window is actually "enabled".
-			if i > 5 or SL[pn].ActiveModifiers.TimingWindows[i] then
-				local idx = (i < 6 and i-1 or i)
-				if i == 1 then
-					-- For the FA+ fantastic, the first window can be anything as long as it's <= the actual fantastic window
-					-- We could use FloatEquals here, but that's a 0.0001 margin of error for the equality case which I think 
-					-- will be generally irrelevant.
-					valid[7] = valid[7] and (PREFSMAN:GetPreference("TimingWindowSeconds"..window) + TWA <= ExpectedWindows[1])
-				else
-					valid[7] = valid[7] and FloatEquals(PREFSMAN:GetPreference("TimingWindowSeconds"..window) + TWA, ExpectedWindows[idx])
-				end
-			end
-		end
-
-		for i, window in ipairs(LifeWindows) do
-			local idx = (i < 6 and i-1 or i)
-			if i == 1 then
-				valid[7] = valid[7] and FloatEquals(THEME:GetMetric("LifeMeterBar", "LifePercentChange"..window), ExpectedLife[1])
-				valid[7] = valid[7] and THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeight"..window) == ExpectedScoreWeight[1]
-			else
-				valid[7] = valid[7] and FloatEquals(THEME:GetMetric("LifeMeterBar", "LifePercentChange"..window), ExpectedLife[idx])
-				valid[7] = valid[7] and THEME:GetMetric("ScoreKeeperNormal", "PercentScoreWeight"..window) == ExpectedScoreWeight[idx]
-			end
-		end
-	end
-
 	-- Validate Rate Mod
 	local rate = SL.Global.ActiveModifiers.MusicRate * 100
 	valid[8] = 100 <= rate and rate <= 300
@@ -512,37 +452,6 @@ CreateCommentString = function(player)
 			end
 			comment = comment..number..suffix
 		end
-	end
-
-	local timingWindowOption = ""
-
-	if SL.Global.GameMode == "ITG" then
-		if not SL[pn].ActiveModifiers.TimingWindows[4] and not SL[pn].ActiveModifiers.TimingWindows[5] then
-			timingWindowOption = "No Dec/WO"
-		elseif not SL[pn].ActiveModifiers.TimingWindows[5] then
-			timingWindowOption = "No WO"
-		elseif not SL[pn].ActiveModifiers.TimingWindows[1] and not SL[pn].ActiveModifiers.TimingWindows[2] then
-			timingWindowOption = "No Fan/Exc"
-		end
-	elseif SL.Global.GameMode == "FA+" then
-		if not SL[pn].ActiveModifiers.TimingWindows[4] and not SL[pn].ActiveModifiers.TimingWindows[5] then
-			timingWindowOption = "No Gre/Dec/WO"
-		elseif not SL[pn].ActiveModifiers.TimingWindows[5] then
-			timingWindowOption = "No Dec/WO"
-		elseif not SL[pn].ActiveModifiers.TimingWindows[1] and not SL[pn].ActiveModifiers.TimingWindows[2] then
-			-- Weird flex but okay
-			timingWindowOption = "No Fan/WO"
-		else
-			-- Way Offs are always removed in FA+ mode.
-			timingWindowOption = "No WO"
-		end
-	end
-
-	if #timingWindowOption ~= 0 then
-		if #comment ~= 0 then
-			comment = comment .. ", "
-		end
-		comment = comment..timingWindowOption
 	end
 
 	local pn = ToEnumShortString(player)
