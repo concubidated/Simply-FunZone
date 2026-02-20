@@ -1,7 +1,8 @@
 -- Majority of code borrowed from Mr. ThatKid and Sudospective; with much help from the OutFox discord.
 
 local NotefieldRenderAfter = 0 --THEME:GetMetric("Player","DrawDistanceAfterTargetsPixels")
-local PreviewDelay = THEME:GetMetric("ScreenSelectMusic", "SampleMusicDelay")
+local PreviewDelay = THEME:GetMetric("ScreenSelectMusic", "NotefieldPreviewDelay") or 0.35
+local MaxPreviewSongLengthSeconds = 15 * 60 -- don't decompress/show preview for songs longer than 15 minutes
 
 local function GetCurrentChartIndex(pn, ChartArray)
     local PlayerSteps = GAMESTATE:GetCurrentSteps(pn)
@@ -163,7 +164,6 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
           self:x(NotefieldX())
           self:zoom(NotefieldZoom())
         end,
-
         Def.NoteField {
             Name = "NotefieldPreview",
             Player = pnNoteField,
@@ -174,12 +174,14 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
             YReverseOffsetPixels = ReceptorOffset,
             FieldID=-1,
             OnCommand=function(self)
-              self:ChangeReload( GAMESTATE:GetCurrentSteps(pnNoteField) )
               self:y(NotefieldY):GetPlayerOptions("ModsLevel_Current"):StealthPastReceptors(true, true)
-              self:AutoPlay(true)
               local PlayerModsArray = GAMESTATE:GetPlayerState(pnNoteField):GetPlayerOptionsString("ModsLevel_Preferred")
-              --force Mini% to 0 here because it throws off the notefield positioning; this notefield is meant to be a preview of the steps in the space allowed, not a complete 1:1 recreation of what the player will see on ScreenGameplay
               self:GetPlayerOptions("ModsLevel_Current"):FromString(PlayerModsArray):Mini(0)
+              local song = GAMESTATE:GetCurrentSong()
+              if song and song:GetLastSecond() <= MaxPreviewSongLengthSeconds then
+                self:ChangeReload( GAMESTATE:GetCurrentSteps(pnNoteField) )
+                self:AutoPlay(true)
+              end
             end,
 
             CurrentStepsP1ChangedMessageCommand=function(self) self:playcommand("Refresh") end,
@@ -187,14 +189,22 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
             --we don't need to use a messagecommand to refresh when switching from Single to Double style because the whole screen refreshes anyway
             OptionsListStartMessageCommand=function(self) self:playcommand("Refresh") end,
 
+            -- Schedule decompress/load after delay; rapid scroll cancels so only the final selection loads
             RefreshCommand=function(self)
+                self:stoptweening()
+                self:sleep(PreviewDelay)
+                self:queuecommand("DoRefresh")
+            end,
+            DoRefreshCommand=function(self)
                 self:AutoPlay(false)
-                local ChartArray = nil
-
                 local Song = GAMESTATE:GetCurrentSong()
-                if Song then ChartArray = Song:GetAllSteps() else return end
+                if not Song then return end
+                if Song:GetLastSecond() > MaxPreviewSongLengthSeconds then
+                    self:SetNoteDataFromLua({})
+                    return
+                end
+                local ChartArray = Song:GetAllSteps()
                 local PlayerModsArray = GAMESTATE:GetPlayerState(pnNoteField):GetPlayerOptionsString("ModsLevel_Preferred")
-                --force Mini% to 0 here because it throws off the notefield positioning; this notefield is meant to be a preview of the steps in the space allowed, not a complete 1:1 recreation of what the player will see on ScreenGameplay
                 self:GetPlayerOptions("ModsLevel_Current"):FromString(PlayerModsArray):Mini(0)
 
                 local ChartIndex = GetCurrentChartIndex(pnNoteField, ChartArray)
@@ -204,7 +214,6 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
                 if not NoteData then return end
 
                 self:SetNoteDataFromLua({})
-                --SCREENMAN:SystemMessage("Loading ChartIndex!")
                 self:SetNoteDataFromLua(NoteData)
                 self:AutoPlay(true)
             end
