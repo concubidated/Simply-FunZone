@@ -4,6 +4,7 @@ if GAMESTATE:IsCourseMode() then return end
 
 local player = ...
 local pn = ToEnumShortString(player)
+local ChartPreviewDelay = THEME:GetMetric("ScreenSelectMusic", "NotefieldPreviewDelay") or 0.35
 
 -- Height and width of the density graph.
 local height = GAMESTATE:GetNumPlayersEnabled() == 2 and 35 or 64
@@ -65,7 +66,7 @@ af[#af+1] = Def.ActorFrame{
 	["CurrentSteps"..pn.."ChangedMessageCommand"]=function(self)
 		self:queuecommand("Hide")
 		self:stoptweening()
-		self:sleep(0.4)
+		self:sleep(ChartPreviewDelay)
 		self:queuecommand("ParseChart")
 	end,
 	ParseChartCommand=function(self)
