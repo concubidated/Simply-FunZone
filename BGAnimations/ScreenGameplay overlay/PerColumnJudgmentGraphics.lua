@@ -107,7 +107,7 @@ for columnIndex=1,numColumns do
 					local tnt = ToEnumShortString(tapnote:GetTapNoteType())
 					if tnt == "Tap" or tnt == "HoldHead" or tnt == "Lift" then
 						local tns = ToEnumShortString(param.TapNoteScore)
-						if tnt ~= "Lift" and tns == "Miss" and tapnote:GetTapNoteResult():GetHeld() and ("Column"..col) == self:GetName() then
+						if tnt ~= "Lift" and tns == "Miss" and (tapnote:GetTapNoteResult().GetHeld and tapnote:GetTapNoteResult():GetHeld()) and ("Column"..col) == self:GetName() then
 							sprite:visible(true)
 							sprite:finishtweening():stopeffect()
 							-- this should match the custom JudgmentTween() from SL for 3.95
