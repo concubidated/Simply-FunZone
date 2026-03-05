@@ -78,7 +78,7 @@ if IsITGmania() then
 						judgments[col][tns] = judgments[col][tns] + 1
 
 						if tapnote:GetTapNoteResult().GetHeld then
-							if tnt ~= "Lift" and tns == "Miss" and tapnote:GetTapNoteResult():GetHeld() then
+							if tnt ~= "Lift" and tns == "Miss" and (tapnote:GetTapNoteResult().GetHeld and tapnote:GetTapNoteResult():GetHeld()) then
 								judgments[col].MissBecauseHeld = judgments[col].MissBecauseHeld + 1
 							end
 						end
