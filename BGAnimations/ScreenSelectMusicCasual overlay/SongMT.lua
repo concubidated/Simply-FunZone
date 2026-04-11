@@ -4,9 +4,6 @@ local TransitionTime = args[2]
 local row = args[3]
 local col = args[4]
 
-local CloseFolderTexture = nil
-local NoJacketTexture = nil
-
 -- max number of characters allowed in a song title before truncating to ellipsis
 local max_chars = 28
 
@@ -240,15 +237,9 @@ local song_mt = {
 				self.title_bmt:settext( THEME:GetString("ScreenSelectMusicCasual", "CloseThisFolder") )
 				self.subtitle_bmt:settext( "" )
 				self.img_path = THEME:GetPathB("ScreenSelectMusicCasual", "overlay/img/CloseThisFolder.png")
-
-				if CloseFolderTexture ~= nil then
-					self.banner:SetTexture(CloseFolderTexture)
-				else
-					-- we should only get in here and need to Load() directly from
-					-- from disk once, on screen init
-					self.banner:Load(self.img_path)
-					CloseFolderTexture = self.banner:GetTexture()
-				end
+				-- Load by path each time; do not cache GetTexture + SetTexture (can crash when the
+				-- texture manager reclaims or replaces textures after other banner loads).
+				self.banner:Load(self.img_path)
 			else
 				-- we are passed in a Song object as info
 				self.song = song
@@ -268,20 +259,16 @@ local song_mt = {
 					self.img_path = nil
 					self.img_type = nil
 
-					if NoJacketTexture ~= nil then
-						self.banner:SetTexture(NoJacketTexture)
-					else
-						self.banner:Load( THEME:GetPathB("ScreenSelectMusicCasual", "overlay/img/no-jacket.png") )
-						NoJacketTexture = self.banner:GetTexture()
-					end
+					self.banner:Load( THEME:GetPathB("ScreenSelectMusicCasual", "overlay/img/no-jacket.png") )
 					return
 				end
 
-				-- thank you, based Jousway
-				if (Sprite.LoadFromCached ~= nil) then
-					self.banner:LoadFromCached(self.img_type, self.img_path)
-
-				-- support SM5.0.12 begrudgingly
+				-- Do not use LoadFromCached here: it goes through ImageCache/SQLite and has been
+				-- observed to abort (SIGABRT) on some builds. Load directly by asset role instead.
+				if self.img_type == "Jacket" then
+					self.banner:Load(self.img_path)
+				elseif self.img_type == "Background" then
+					self.banner:LoadBackground(self.img_path)
 				else
 					self.banner:LoadBanner(self.img_path)
 				end
