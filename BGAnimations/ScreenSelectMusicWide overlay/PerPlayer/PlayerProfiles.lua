@@ -81,7 +81,8 @@ for i,stats in pairs( SL[ToEnumShortString(player)].Stages.Stats ) do
 
 		for column, judgments in ipairs(stats.column_judgments) do
 			for judgment, judgment_count in pairs(judgments) do
-				if judgment ~= "Miss" then
+				-- Early hits are stored in a nested table; only sum numeric tap counts.
+				if type(judgment_count) == "number" and judgment ~= "Miss" then
 					notesHitThisGame = notesHitThisGame + judgment_count
 				end
 			end
