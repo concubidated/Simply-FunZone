@@ -3,6 +3,8 @@
 local NotefieldRenderAfter = 0 --THEME:GetMetric("Player","DrawDistanceAfterTargetsPixels")
 local PreviewDelay = THEME:GetMetric("ScreenSelectMusic", "NotefieldPreviewDelay") or 0.35
 local MaxPreviewSongLengthSeconds = 15 * 60 -- don't decompress/show preview for songs longer than 15 minutes
+-- Vertical offset: positive = chart preview lower on screen
+local ChartPreviewYOffset = 50
 
 local function GetCurrentChartIndex(pn, ChartArray)
     local PlayerSteps = GAMESTATE:GetCurrentSteps(pn)
@@ -32,7 +34,8 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
         if PROFILEMAN:IsPersistentProfile(pnNoteField) then
           return 1080
         else
-          return 430
+          -- match profile draw distance so full-height preview shows enough notes
+          return 1080
         end
       end
     end
@@ -95,12 +98,12 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
     local function ReceptorPosNormal()
       --2 players
       if GAMESTATE:GetNumPlayersEnabled() == 2 then
-        --with profiles
+        --with profiles: full-height preview, receptors visible
         if PROFILEMAN:IsPersistentProfile(pn) then
           return _screen.cy-115
-        --without profiles
+        --without profiles: use same vertical span as with-profile so chart preview uses full height
         else
-          return _screen.cy-170
+          return _screen.cy-304
         end
       --1 player
       else
@@ -119,9 +122,9 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
         --with profiles
         if PROFILEMAN:IsPersistentProfile(pn) then
           return _screen.cy+492
-        --without profiles
+        --without profiles: symmetric span so chart preview uses full height (matches ReceptorPosNormal)
         else
-          return _screen.cy+35
+          return _screen.cy+304
         end
       --1 player
       else
@@ -184,6 +187,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
               end
             end,
 
+            CurrentSongChangedMessageCommand=function(self) self:playcommand("Refresh") end,
             CurrentStepsP1ChangedMessageCommand=function(self) self:playcommand("Refresh") end,
             CurrentStepsP2ChangedMessageCommand=function(self) self:playcommand("Refresh") end,
             --we don't need to use a messagecommand to refresh when switching from Single to Double style because the whole screen refreshes anyway
@@ -192,6 +196,9 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
             -- Schedule decompress/load after delay; rapid scroll cancels so only the final selection loads
             RefreshCommand=function(self)
                 self:stoptweening()
+                -- clear preview immediately when scrolling so the old chart doesn't stay visible
+                self:AutoPlay(false)
+                self:SetNoteDataFromLua({})
                 self:sleep(PreviewDelay)
                 self:queuecommand("DoRefresh")
             end,
