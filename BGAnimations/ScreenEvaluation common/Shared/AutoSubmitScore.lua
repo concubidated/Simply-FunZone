@@ -79,6 +79,17 @@ local GetRescoredJudgmentCounts = function(player)
 		["wayOff"] = 0
 	}
 
+	local stage_stat = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1]
+	for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
+		local col = stage_stat.column_judgments and stage_stat.column_judgments[i]
+		local early = col and col["Early"]
+		if early then
+			for window, name in pairs(translation) do
+				rescored[name] = rescored[name] + (early[window] or 0)
+			end
+		end
+	end
+
 	return rescored
 end
 
