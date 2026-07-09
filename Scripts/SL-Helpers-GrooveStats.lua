@@ -458,8 +458,12 @@ ValidForGrooveStats = function(player)
 		or po:Big()
 	)
 
-	-- only FailTypes "Immediate" and "ImmediateContinue" are valid for GrooveStats
-	valid[11] = (po:FailSetting() == "FailType_Immediate" or po:FailSetting() == "FailType_ImmediateContinue")
+	-- only FailTypes "Immediate" and "ImmediateContinue" ("Delayed" in the UI) are valid for GrooveStats
+	-- OutFox PushEnum can emit "FailType_FailType_ImmediateContinue" because enum members
+	-- are already named FailType_*; take the final underscore-separated token.
+	local fail_raw = tostring(po:FailSetting() or "")
+	local fail = fail_raw:match("([^_]+)$") or fail_raw
+	valid[11] = (fail == "Immediate" or fail == "ImmediateContinue")
 
 	-- AutoPlay/AutoplayCPU is not allowed
 	valid[12] = IsHumanPlayer(player)

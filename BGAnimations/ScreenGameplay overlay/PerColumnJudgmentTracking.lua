@@ -28,7 +28,7 @@ local PlayerState = GAMESTATE:GetPlayerState(player)
 local streams = SL[ToEnumShortString(player)].Streams
 local foot
 for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
-	if IsITGmania() then
+	if IsITGmania() or IsOutFox() then
 		-- W4 and W5 are the early decent/way offs itself.
 		-- W0-W3 are for indicating what the early hits were rescored to.
 		judgments[#judgments+1] = { W0=0, W1=0, W2=0, W3=0, W4=0, W5=0, Miss=0, MissBecauseHeld=0, Early={ W0=0, W1=0, W2=0, W3=0, W4=0, W5=0 }, W1early=0, W2early=0, W3early=0, W4early=0, W5early=0, W4lf=0, W4rf=0, W5lf=0, W5rf=0, Misslf=0, Missrf=0 }
@@ -37,7 +37,7 @@ for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
 	end
 end
 
-if IsITGmania() then
+if IsITGmania() or IsOutFox() then
 	return Def.Actor{
 		OffCommand=function(self)
 			local storage = SL[ToEnumShortString(player)].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1]

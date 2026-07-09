@@ -77,11 +77,14 @@ local GetRescoredJudgmentCounts = function(player)
 		["decent"] = 0,
 		["wayOff"] = 0
 	}
-	
-	if IsITGmania() then
-		for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
+
+	local stage_stat = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1]
+	for i=1,GAMESTATE:GetCurrentStyle():ColumnsPerPlayer() do
+		local col = stage_stat.column_judgments and stage_stat.column_judgments[i]
+		local early = col and col["Early"]
+		if early then
 			for window, name in pairs(translation) do
-				rescored[name] = rescored[name] + SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].column_judgments[i]["Early"][window]
+				rescored[name] = rescored[name] + (early[window] or 0)
 			end
 		end
 	end
@@ -236,18 +239,9 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 					local personalRank = nil
 					local showExScore = SL["P"..side].ActiveModifiers.ShowEXScore and data[playerStr]["exLeaderboard"]
 
-					if IsITGmania() then
-						local leaderboardData = nil
-						if showExScore then
-							leaderboardData = data[playerStr]["exLeaderboard"]
-						elseif data[playerStr]["gsLeaderboard"] then
-							leaderboardData = data[playerStr]["gsLeaderboard"]
-						end
-					else
-						local leaderboardData = data[playerStr] and (
-							showExScore and data[playerStr]["exLeaderboard"] or data[playerStr]["gsLeaderboard"]
-						)
-					end
+					local leaderboardData = data[playerStr] and (
+						showExScore and data[playerStr]["exLeaderboard"] or data[playerStr]["gsLeaderboard"]
+					)
 
 					if leaderboardData then
 						for gsEntry in ivalues(leaderboardData) do
@@ -284,6 +278,14 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 							entryNum = entryNum + 1
 						end
 
+						QRPane:GetChild("QRCode"):queuecommand("Hide")
+						QRPane:GetChild("HelpText"):settext("Score has already been submitted :)")
+						if i == 1 and P1SubmitText then
+							P1SubmitText:queuecommand("Submit")
+						elseif i == 2 and P2SubmitText then
+							P2SubmitText:queuecommand("Submit")
+						end
+					elseif data[playerStr]["result"] == "score-added" or data[playerStr]["result"] == "improved" then
 						QRPane:GetChild("QRCode"):queuecommand("Hide")
 						QRPane:GetChild("HelpText"):settext("Score has already been submitted :)")
 						if i == 1 and P1SubmitText then

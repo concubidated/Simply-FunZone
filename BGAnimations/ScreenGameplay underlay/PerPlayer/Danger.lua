@@ -6,9 +6,11 @@ if SL.Global.GameMode == "Casual" then return end
 
 local player = ...
 
--- Don't bother loading any code for Danger if FailType for this player is FailType_Off
-local failtype = GAMESTATE:GetPlayerState(player):GetPlayerOptions("ModsLevel_Preferred"):FailSetting()
-if failtype == "FailType_Off" then return end
+-- Don't bother loading any code for Danger if FailType for this player is Off
+-- OutFox PushEnum can emit FailType_FailType_*; take the final token.
+local fail_raw = tostring(GAMESTATE:GetPlayerState(player):GetPlayerOptions("ModsLevel_Preferred"):FailSetting() or "")
+local failtype = fail_raw:match("([^_]+)$") or fail_raw
+if failtype == "Off" then return end
 
 -- ------------------------------------------------------------------
 
