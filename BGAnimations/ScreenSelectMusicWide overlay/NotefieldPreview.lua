@@ -189,9 +189,20 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
             --we don't need to use a messagecommand to refresh when switching from Single to Double style because the whole screen refreshes anyway
             OptionsListStartMessageCommand=function(self) self:playcommand("Refresh") end,
 
+            -- Hide immediately when the wheel starts moving or the song changes mid-scroll
+            PreviousSongMessageCommand=function(self) self:playcommand("ClearPreview") end,
+            NextSongMessageCommand=function(self) self:playcommand("ClearPreview") end,
+            CurrentSongChangedMessageCommand=function(self) self:playcommand("ClearPreview") end,
+
+            ClearPreviewCommand=function(self)
+                self:stoptweening()
+                self:AutoPlay(false)
+                self:SetNoteDataFromLua({})
+            end,
+
             -- Schedule decompress/load after delay; rapid scroll cancels so only the final selection loads
             RefreshCommand=function(self)
-                self:stoptweening()
+                self:playcommand("ClearPreview")
                 self:sleep(PreviewDelay)
                 self:queuecommand("DoRefresh")
             end,
