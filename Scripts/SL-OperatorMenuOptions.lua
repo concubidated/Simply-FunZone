@@ -179,14 +179,16 @@ OperatorMenuOptionRows.VideoRenderer = function()
 	local choices = { "opengl" }
 	local values  = { "opengl" }
 
-	-- Windows also has d3d as a VideoRenderer on SM 5.1, and SM 5.3
-	-- features a modern OpenGL based backend (glad) on all supported
-	-- platforms. The convention(?) there is to list both available
-	-- backends in Preferences.ini, but only use the first
+	-- Windows also has d3d as a VideoRenderer on SM 5.1, and OutFox
+	-- features modern OpenGL backends (gladprog / glad) on all supported
+	-- platforms. The convention is to list available backends in
+	-- Preferences.ini as a fallback chain, but only use the first.
 	local architecture = HOOKS:GetArchName():lower()
 	if IsOutFox() then
-		table.insert(choices, "glad")
-		values = { "opengl,glad", "glad,opengl" }
+		-- OutFox default is gladprog,glad,opengl — include gladprog so
+		-- opening this menu doesn't rewrite the pref back to opengl.
+		choices = { "gladprog", "glad", "opengl" }
+		values  = { "gladprog,glad,opengl", "glad,gladprog,opengl", "opengl,gladprog,glad" }
 	elseif architecture:match("windows") then
 		table.insert(choices, "d3d")
 		values = { "opengl,d3d", "d3d,opengl" }
