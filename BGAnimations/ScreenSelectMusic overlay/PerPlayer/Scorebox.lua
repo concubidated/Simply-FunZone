@@ -41,6 +41,8 @@ local rival_color = color("#c29cff")
 
 local loop_seconds = 5
 local transition_seconds = 1
+local request_stable_delay = 0.12
+local duplicate_request_seconds = 5
 
 local all_data = {}
 
@@ -81,10 +83,64 @@ local HasData = function(idx)
 	return all_data[idx+1] and all_data[idx+1].has_data
 end
 
+local GetSelectMusicPerPlayer = function()
+	local top_screen = SCREENMAN:GetTopScreen()
+	if not top_screen then return nil end
+	local overlay = top_screen:GetChild("Overlay")
+	if not overlay then return nil end
+	return overlay:GetChild("PerPlayer")
+end
+
+local GetScoreBox = function()
+	local per_player = GetSelectMusicPerPlayer()
+	return per_player and per_player:GetChild("ScoreBox" .. pn) or nil
+end
+
+local GetScoreBoxChild = function(child_name)
+	local scorebox = GetScoreBox()
+	return scorebox and scorebox:GetChild(child_name) or nil
+end
+
+local GetStepArtist = function()
+	local per_player = GetSelectMusicPerPlayer()
+	return per_player and per_player:GetChild("StepArtistAF_P"..n) or nil
+end
+
+local ClearTextChild = function(parent, child_name)
+	local child = parent and parent:GetChild(child_name)
+	if not child then return end
+	-- Rank1 is a crown Sprite, not BitmapText; only call settext when available.
+	if child.settext then
+		child:settext("")
+	end
+	child:visible(false)
+end
+
+local HideChild = function(parent, child_name)
+	local child = parent and parent:GetChild(child_name)
+	if child then child:visible(false) end
+end
+
+local HideFadedChild = function(parent, child_name)
+	local child = parent and parent:GetChild(child_name)
+	if child then child:diffusealpha(0):visible(false) end
+end
+
+local FormatLeaderboardScore = function(score)
+	local score_value = tonumber(score)
+	if not score_value then return nil end
+	return string.format("%.2f", score_value/100)
+end
+
 local SetScoreData = function(data_idx, score_idx, rank, name, score, isSelf, isRival, isFail, isEx)
 	all_data[data_idx].has_data = true
 
 	local score_data = all_data[data_idx]["scores"][score_idx]
+	rank = tostring(rank or "")
+	name = tostring(name or "")
+	score = tostring(score or "")
+	local score_value = tonumber(score)
+
 	score_data.rank = rank..((#rank > 0) and "." or "")
 	score_data.name = name
 	score_data.score = score
@@ -93,27 +149,43 @@ local SetScoreData = function(data_idx, score_idx, rank, name, score, isSelf, is
 	score_data.isFail = isFail
 	score_data.isEx = isEx
 	
-	if not isFail and (isRival or isSelf) then
+	if score_value and not isFail and (isRival or isSelf) then
 		if data_idx == 3 then
-			if tonumber(score) > SL[pn].Rival.EXScore then
-				SL[pn].Rival.EXScore = tonumber(score)
+			if score_value > SL[pn].Rival.EXScore then
+				SL[pn].Rival.EXScore = score_value
 			end
 		else
-			if tonumber(score) > SL[pn].Rival.Score then
-				SL[pn].Rival.Score = tonumber(score)
+			if score_value > SL[pn].Rival.Score then
+				SL[pn].Rival.Score = score_value
 			end
 		end
 	end
 	
-	if score_data.rank == 1 then
+	if score_value and tonumber(rank) == 1 then
 		if data_idx == 3 then
-			SL[pn].Rival.WREXScore = tonumber(score)
+			SL[pn].Rival.WREXScore = score_value
 		else
-			if tonumber(score) > SL[pn].Rival.WRScore then
-				SL[pn].Rival.WRScore = tonumber(score)
+			if score_value > SL[pn].Rival.WRScore then
+				SL[pn].Rival.WRScore = score_value
 			end
 		end
 	end
+end
+
+local SetScoreDataFromEntry = function(data_idx, score_idx, entry, isEx)
+	if type(entry) ~= "table" then return false end
+	local score = FormatLeaderboardScore(entry["score"])
+	if not score then return false end
+	SetScoreData(data_idx, score_idx,
+		tostring(entry["rank"] or ""),
+		entry["name"] or "",
+		score,
+		entry["isSelf"] or false,
+		entry["isRival"] or false,
+		entry["isFail"] or false,
+		isEx
+	)
+	return true
 end
 
 local LeaderboardRequestProcessor = function(res, master)
@@ -135,12 +207,12 @@ local LeaderboardRequestProcessor = function(res, master)
 	end
 
 	local playerStr = "player"..n
-	local data = JsonDecode(res.body)
+	local data = SL.SafeJsonDecode(res.body)
 
 	-- BoogieStats integration
 	-- Find out whether this chart is ranked on GrooveStats. 
 	-- If it is unranked, alter groovestats logo and the box border color to the BoogieStats theme
-	local headers = res.headers
+	local headers = res.headers or {}
 	local boogie = false
 	local boogie_ex = false
 	if headers["bs-leaderboard-player-" .. n] == "BS" then
@@ -148,27 +220,26 @@ local LeaderboardRequestProcessor = function(res, master)
 	elseif headers["bs-leaderboard-player-" .. n] == "BS-EX" then
 		boogie_ex = true
 	end
-	if not SCREENMAN:GetTopScreen():GetChild("Overlay") then return end
-	local gsBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("ScoreBox" .. pn):GetChild("GrooveStatsLogo")
-	local bsBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("ScoreBox" .. pn):GetChild("BoogieStatsLogo")
-	local bsExBox = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("ScoreBox" .. pn):GetChild("BoogieStatsEXLogo")
+	local gsBox = GetScoreBoxChild("GrooveStatsLogo")
+	local bsBox = GetScoreBoxChild("BoogieStatsLogo")
+	local bsExBox = GetScoreBoxChild("BoogieStatsEXLogo")
 
 	if boogie then
 		style_color[0] = BoogieStatsPurple
 		style_color[1] = BoogieStatsPurple
-		bsBox:visible(true)
-		bsExBox:visible(false)
-		gsBox:visible(false)
+		if bsBox then bsBox:visible(true) end
+		if bsExBox then bsExBox:visible(false) end
+		if gsBox then gsBox:visible(false) end
 	else
 		style_color[0] = GrooveStatsBlue
-		bsBox:visible(false)
-		bsExBox:visible(false)
-		gsBox:visible(true)
+		if bsBox then bsBox:visible(false) end
+		if bsExBox then bsExBox:visible(false) end
+		if gsBox then gsBox:visible(true) end
 	end
 	
 
 	-- First check to see if the leaderboard even exists.
-	if data and data[playerStr] then
+	if data and type(data[playerStr]) == "table" then
 		if SL[pn].Streams.Hash ~= data[playerStr]["chartHash"] then return end
 		-- These will get overwritten if we have any entries in the leaderboard below.
 		SetScoreData(1, 1, "", "No Scores", "", false, false, false, false)
@@ -187,19 +258,13 @@ local LeaderboardRequestProcessor = function(res, master)
 		if SL["P"..n].ActiveModifiers.ShowEXScore then
 			-- If the player is using EX scoring, then we want to display the EX leaderboard first.		
 			if showEX then
-				if data[playerStr]["exLeaderboard"] then
+				if type(data[playerStr]["exLeaderboard"]) == "table" then
 					numEntries = 0
 					for entry in ivalues(data[playerStr]["exLeaderboard"]) do
-						numEntries = numEntries + 1
-						SetScoreData(1, numEntries,
-										tostring(entry["rank"]),
-										entry["name"],
-										string.format("%.2f", entry["score"]/100),
-										entry["isSelf"],
-										entry["isRival"],
-										entry["isFail"],
-										true
-									)
+						local nextEntry = numEntries + 1
+						if SetScoreDataFromEntry(1, nextEntry, entry, true) then
+							numEntries = nextEntry
+						end
 					end
 					numEntries = numEntries + 1
 					for i=math.max(2,numEntries),5,1 do
@@ -209,19 +274,13 @@ local LeaderboardRequestProcessor = function(res, master)
 			end
 
 			if showITG then
-				if data[playerStr]["gsLeaderboard"] then
+				if type(data[playerStr]["gsLeaderboard"]) == "table" then
 					numEntries = 0
 					for entry in ivalues(data[playerStr]["gsLeaderboard"]) do
-						numEntries = numEntries + 1
-						SetScoreData(2, numEntries,
-										tostring(entry["rank"]),
-										entry["name"],
-										string.format("%.2f", entry["score"]/100),
-										entry["isSelf"],
-										entry["isRival"],
-										entry["isFail"],
-										boogie_ex
-									)
+						local nextEntry = numEntries + 1
+						if SetScoreDataFromEntry(2, nextEntry, entry, boogie_ex) then
+							numEntries = nextEntry
+						end
 					end
 					numEntries = numEntries + 1
 					for i=math.max(2,numEntries),5,1 do
@@ -232,19 +291,13 @@ local LeaderboardRequestProcessor = function(res, master)
 		else
 			-- Display the main GrooveStats leaderboard first if player is not using EX scoring.
 			if showITG then
-				if data[playerStr]["gsLeaderboard"] then
+				if type(data[playerStr]["gsLeaderboard"]) == "table" then
 					numEntries = 0
 					for entry in ivalues(data[playerStr]["gsLeaderboard"]) do
-						numEntries = numEntries + 1
-						SetScoreData(1, numEntries,
-										tostring(entry["rank"]),
-										entry["name"],
-										string.format("%.2f", entry["score"]/100),
-										entry["isSelf"],
-										entry["isRival"],
-										entry["isFail"],
-										boogie_ex
-									)
+						local nextEntry = numEntries + 1
+						if SetScoreDataFromEntry(1, nextEntry, entry, boogie_ex) then
+							numEntries = nextEntry
+						end
 					end
 					numEntries = numEntries + 1
 					for i=math.max(2,numEntries),5,1 do
@@ -254,19 +307,13 @@ local LeaderboardRequestProcessor = function(res, master)
 			end
 
 			if showEX then
-				if data[playerStr]["exLeaderboard"] then
+				if type(data[playerStr]["exLeaderboard"]) == "table" then
 					numEntries = 0
 					for entry in ivalues(data[playerStr]["exLeaderboard"]) do
-						numEntries = numEntries + 1
-						SetScoreData(2, numEntries,
-										tostring(entry["rank"]),
-										entry["name"],
-										string.format("%.2f", entry["score"]/100),
-										entry["isSelf"],
-										entry["isRival"],
-										entry["isFail"],
-										true
-									)
+						local nextEntry = numEntries + 1
+						if SetScoreDataFromEntry(2, nextEntry, entry, true) then
+							numEntries = nextEntry
+						end
 					end
 					numEntries = numEntries + 1
 					for i=math.max(2,numEntries),5,1 do
@@ -278,23 +325,17 @@ local LeaderboardRequestProcessor = function(res, master)
 
 		-- Display event boxes first if they are applicable
 		if showEvents then
-			if data[playerStr]["rpg"] then
+			if type(data[playerStr]["rpg"]) == "table" then
 				cur_style = 3
 				local numEntries = 0
 				SetScoreData(3, 1, "", "No Scores", "", false, false, false)
 
-				if data[playerStr]["rpg"]["rpgLeaderboard"] then
+				if type(data[playerStr]["rpg"]["rpgLeaderboard"]) == "table" then
 					for entry in ivalues(data[playerStr]["rpg"]["rpgLeaderboard"]) do
-						numEntries = numEntries + 1
-						SetScoreData(3, numEntries,
-										tostring(entry["rank"]),
-										entry["name"],
-										string.format("%.2f", entry["score"]/100),
-										entry["isSelf"],
-										entry["isRival"],
-										entry["isFail"],
-										false
-									)
+						local nextEntry = numEntries + 1
+						if SetScoreDataFromEntry(3, nextEntry, entry, false) then
+							numEntries = nextEntry
+						end
 					end
 					numEntries = numEntries + 1
 					for i=numEntries,5,1 do
@@ -309,31 +350,26 @@ local LeaderboardRequestProcessor = function(res, master)
 				end
 			end
 
-			if data[playerStr]["itl"] then
+			if type(data[playerStr]["itl"]) == "table" then
 				cur_style = 4
 				local numEntries = 0
 				SetScoreData(4, 1, "", "No Scores", "", false, false, false)
 
-				if data[playerStr]["itl"]["itlLeaderboard"] then
+				if type(data[playerStr]["itl"]["itlLeaderboard"]) == "table" then
 					for entry in ivalues(data[playerStr]["itl"]["itlLeaderboard"]) do
-						if entry["isSelf"] then
-							UpdateItlExScore(player, SL[pn].Streams.Hash, entry["score"])
-							SL["P"..n].itlScore = entry["score"]
-							local stepartist = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("PerPlayer"):GetChild("StepArtistAF_P"..n)
+						local score_value = type(entry) == "table" and tonumber(entry["score"]) or nil
+						if type(entry) == "table" and entry["isSelf"] and score_value then
+							UpdateItlExScore(player, SL[pn].Streams.Hash, score_value)
+							SL["P"..n].itlScore = score_value
+							local stepartist = GetStepArtist()
 							if stepartist ~= nil then
 							  stepartist:queuecommand("ITL")
 							end
 						end
-						numEntries = numEntries + 1
-						SetScoreData(4, numEntries,
-										tostring(entry["rank"]),
-										entry["name"],
-										string.format("%.2f", entry["score"]/100),
-										entry["isSelf"],
-										entry["isRival"],
-										entry["isFail"],
-										true
-									)
+						local nextEntry = numEntries + 1
+						if SetScoreDataFromEntry(4, nextEntry, entry, true) then
+							numEntries = nextEntry
+						end
 					end
 					numEntries = numEntries + 1
 					for i=numEntries,5,1 do
@@ -402,16 +438,19 @@ local af = Def.ActorFrame{
 		end
 	end,
 	CurrentSongChangedMessageCommand=function(self)
+		SL.SelectMusicTelemetry:Pulse("normal.scorebox."..pn..".song")
 		self:finishtweening():visible(false)
 		ResetAllData()
 		self.isFirst = true
 	end,
 	CheckScoreboxCommand=function(self)
+		SL.SelectMusicTelemetry:Pulse("normal.scorebox."..pn..".check")
 		if GAMESTATE:GetCurrentSong() and GAMESTATE:GetCurrentSteps(player) then
 			self:queuecommand("LoopScorebox")
 		end
 	end,
 	LoopScoreboxCommand=function(self)
+		SL.SelectMusicTelemetry:Pulse("normal.scorebox."..pn..".loop")
 		self:visible(true)
 		
 		local has_data = false
@@ -478,9 +517,11 @@ local af = Def.ActorFrame{
 
 	RequestResponseActor(0, 0)..{
 		OnCommand=function(self)
-			self:queuecommand("MakeRequest")
 			-- Create variables for both players, even if they're not currently active.
 			self.IsParsing = {false, false}
+			self.LastRequestKey = ""
+			self.LastRequestTime = 0
+			self:queuecommand("MakeRequest")
 		end,
 		-- Broadcasted from ./PerPlayer/DensityGraph.lua
 		P1ChartParsingMessageCommand=function(self)	self.IsParsing[1] = true end,
@@ -499,6 +540,8 @@ local af = Def.ActorFrame{
 		end,
 		ChartParsedCommand=function(self)
 			if not self.leaving_screen then
+				self:stoptweening()
+				self:sleep(request_stable_delay)
 				self:queuecommand("MakeRequest")
 			end
 		end,
@@ -508,11 +551,13 @@ local af = Def.ActorFrame{
 			local query = {
 				maxLeaderboardResults=NumEntries,
 			}
+			local requestKey = ""
 
 			if SL[pn].ApiKey ~= "" and SL[pn].Streams.Hash ~= "" then
 				query["chartHashP"..n] = SL[pn].Streams.Hash
 				headers["x-api-key-player-"..n] = SL[pn].ApiKey
 				sendRequest = true
+				requestKey = SL[pn].Streams.Hash .. "|" .. SL[pn].ApiKey .. "|" .. n
 			end
 
 			-- We technically will send two requests in ultrawide versus mode since
@@ -520,38 +565,39 @@ local af = Def.ActorFrame{
 			-- Should be fine though.
 			if sendRequest then
 				if self.IsParsing[1] or self.IsParsing[2] then return end
+				local now = GetTimeSinceStart()
+				if requestKey == self.LastRequestKey and now - self.LastRequestTime < duplicate_request_seconds then
+					SL.SelectMusicTelemetry:Pulse("normal.scorebox.gs.duplicate")
+					return
+				end
+				self.LastRequestKey = requestKey
+				self.LastRequestTime = now
 				
 				RemoveStaleCachedRequests()
 				ResetAllData()
 				
-				self:GetParent():visible(true)
-				self:GetParent():GetChild("Name1"):settext(""):visible(false)
-				self:GetParent():GetChild("Name2"):settext(""):visible(false)
-				self:GetParent():GetChild("Name3"):settext(""):visible(false)
-				self:GetParent():GetChild("Name4"):settext(""):visible(false)
-				self:GetParent():GetChild("Name5"):settext(""):visible(false)
-				self:GetParent():GetChild("Score1"):settext(""):visible(false)
-				self:GetParent():GetChild("Score2"):settext(""):visible(false)
-				self:GetParent():GetChild("Score3"):settext(""):visible(false)
-				self:GetParent():GetChild("Score4"):settext(""):visible(false)
-				self:GetParent():GetChild("Score5"):settext(""):visible(false)
-				self:GetParent():GetChild("Rank1"):diffusealpha(0):visible(false)
-				self:GetParent():GetChild("Rank2"):settext(""):visible(false)
-				self:GetParent():GetChild("Rank3"):settext(""):visible(false)
-				self:GetParent():GetChild("Rank4"):settext(""):visible(false)
-				self:GetParent():GetChild("Rank5"):settext(""):visible(false)
-				self:GetParent():GetChild("GrooveStatsLogo"):visible(true):diffusealpha(0.5):glowshift({color("#C8FFFF"), color("#6BF0FF")})
-				self:GetParent():GetChild("BoogieStatsLogo"):visible(false)
-				self:GetParent():GetChild("BoogieStatsEXLogo"):visible(false)
-				self:GetParent():GetChild("SRPG8Logo"):diffusealpha(0):visible(false)
-				self:GetParent():GetChild("ITLLogo"):diffusealpha(0):visible(false)
-				self:GetParent():GetChild("Outline"):diffusealpha(0):visible(false)
-				self:GetParent():GetChild("Background"):diffusealpha(0):visible(false)
+				local parent = self:GetParent()
+				if not parent then return end
+				parent:visible(true)
+				for i=1,5 do
+					ClearTextChild(parent, "Name"..i)
+					ClearTextChild(parent, "Score"..i)
+					ClearTextChild(parent, "Rank"..i)
+				end
+				local gs_logo = parent:GetChild("GrooveStatsLogo")
+				if gs_logo then gs_logo:visible(true):diffusealpha(0.5):glowshift({color("#C8FFFF"), color("#6BF0FF")}) end
+				HideChild(parent, "BoogieStatsLogo")
+				HideChild(parent, "BoogieStatsEXLogo")
+				HideFadedChild(parent, "SRPG8Logo")
+				HideFadedChild(parent, "ITLLogo")
+				HideFadedChild(parent, "Outline")
+				HideFadedChild(parent, "Background")
 				
 				if IsItlSong(player) then
 					UpdatePathMap(player, SL[pn].Streams.Hash)
 				end
 				
+				SL.SelectMusicTelemetry:Pulse("normal.scorebox.gs.request")
 				self:playcommand("MakeGrooveStatsRequest", {
 					endpoint="player-leaderboards.php?"..NETWORK:EncodeQueryParameters(query),
 					method="GET",

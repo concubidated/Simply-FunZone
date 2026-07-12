@@ -46,7 +46,8 @@ return Def.ActorFrame{
 					seconds = TrailUtil.GetTotalSeconds(trail)
 				end
 			else
-				seconds = GAMESTATE:GetCurrentSong():GetLastSecond()
+				local song = GAMESTATE:GetCurrentSong()
+				if song then seconds = song:GetLastSecond() end
 			end
 
 			if seconds then
@@ -74,7 +75,8 @@ return Def.ActorFrame{
 			end
 		end,
 		OnCommand = function(self)
-			local artist = (not GAMESTATE:IsCourseMode()) and GAMESTATE:GetCurrentSong():GetDisplayArtist()
+			local song = GAMESTATE:GetCurrentSong()
+			local artist = (not GAMESTATE:IsCourseMode() and song) and song:GetDisplayArtist()
 			if artist then self:settext(artist) end
 		end
 	}

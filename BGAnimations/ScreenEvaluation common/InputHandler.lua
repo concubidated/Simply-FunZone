@@ -28,6 +28,9 @@ local secondary_i = clamp(SL[ToEnumShortString(mpn)].EvalPaneSecondary, 1, num_p
 -- -----------------------------------------------------------------------
 -- initialize local tables (panes, active_pane) for the the input handling function to use
 
+local panes_af = af:GetChild("Panes")
+if not panes_af then return end
+
 for controller=1,2 do
 
 	panes[controller] = {}
@@ -37,7 +40,7 @@ for controller=1,2 do
 	-- list of panes we want to consider.
 	for i=1,num_panes do
 
-		local pane = af:GetChild("Panes"):GetChild( ("Pane%i_SideP%i"):format(i, controller) )
+		local pane = panes_af:GetChild( ("Pane%i_SideP%i"):format(i, controller) )
 
 		if pane ~= nil then
 			-- single, double
@@ -68,6 +71,78 @@ for controller=1,2 do
 	end
 end
 
+for controller=1,2 do
+	if #panes[controller] == 0 then
+		active_pane[controller] = nil
+	else
+		active_pane[controller] = clamp(active_pane[controller] or 1, 1, #panes[controller])
+	end
+end
+
+local GetPane = function(controller, pane_index)
+	if not (panes[controller] and pane_index) then return nil end
+	return panes[controller][pane_index]
+end
+
+local GetPaneBody = function(controller, pane_index)
+	local pane = GetPane(controller, pane_index)
+	return pane and pane:GetChild("") or nil
+end
+
+local GetPaneChild = function(controller, pane_index, child_name)
+	local body = GetPaneBody(controller, pane_index)
+	return body and body:GetChild(child_name) or nil
+end
+
+local PaneExpandsForDouble = function(controller, pane_index)
+	local body = GetPaneBody(controller, pane_index)
+	return body and body:GetCommand("ExpandForDouble") ~= nil
+end
+
+local MoveActivePane = function(controller, direction)
+	if not (panes[controller] and #panes[controller] > 0 and active_pane[controller]) then return end
+
+	if direction > 0 then
+		active_pane[controller] = (active_pane[controller] % #panes[controller]) + 1
+	else
+		active_pane[controller] = ((active_pane[controller] - 2) % #panes[controller]) + 1
+	end
+end
+
+local SkipSubmittedQRPane = function(controller, direction)
+	local help_text = GetPaneChild(controller, active_pane[controller], "HelpText")
+	if help_text and help_text:GetText() == "Score has already been submitted :)" then
+		MoveActivePane(controller, direction)
+	end
+end
+
+local GetLeaderboardFirstName = function(controller)
+	local high_score_list = GetPaneChild(controller, active_pane[controller], "HighScoreList")
+	local entry = high_score_list and high_score_list:GetChild("HighScoreEntry1")
+	return entry and entry:GetChild("Name") or nil
+end
+
+local SkipEmptyLeaderboardPanes = function(controller, direction)
+	if not (panes[controller] and #panes[controller] > 0) then return end
+
+	for i=1,#panes[controller] do
+		local leaderboard_name = GetLeaderboardFirstName(controller)
+		if not leaderboard_name then return end
+		if leaderboard_name:GetText() ~= "----" then return end
+		MoveActivePane(controller, direction)
+	end
+end
+
+local ShowActivePane = function(controller)
+	local pane = GetPane(controller, active_pane[controller])
+	if pane then pane:visible(true):diffusealpha(1) end
+end
+
+local HideActivePane = function(controller)
+	local pane = GetPane(controller, active_pane[controller])
+	if pane then pane:visible(false) end
+end
+
 -- -----------------------------------------------------------------------
 -- don't allow double to initialize into a configuration like
 -- EvalPanePrimary=3
@@ -79,28 +154,28 @@ if style == "OnePlayerTwoSides" then
 	local ocn = (cn % 2) + 1
 
 	-- if the player wanted their primary pane to be something that is full-width in double
-	if panes[cn][active_pane[cn]]:GetChild(""):GetCommand("ExpandForDouble") then
+	if PaneExpandsForDouble(cn, active_pane[cn]) then
 		-- hide all panes for the other controller
 		for pane in ivalues(panes[ocn]) do
 			pane:visible(false)
 		end
 		-- and only show the one full-width pane
-		panes[cn][active_pane[cn]]:visible(true):diffusealpha(1)
+		ShowActivePane(cn)
 	end
 
 	-- if the player wanted their secondary pane to be something that is full-width in double
-	if panes[cn][active_pane[ocn]]:GetChild(""):GetCommand("ExpandForDouble") then
+	if PaneExpandsForDouble(ocn, active_pane[ocn]) then
 		-- arbitrarily opt to hide the secondary pane
-		panes[ocn][active_pane[ocn]]:visible(false)
+		HideActivePane(ocn)
 
 		-- and show the next available pane that doesn't match primary and isn't also full-width
 		for i=1,#panes[ocn] do
-			active_pane[ocn] = (active_pane[ocn] % #panes[ocn]) + 1
+			MoveActivePane(ocn, 1)
 
 			if active_pane[ocn] ~= active_pane[cn]
-			and not panes[cn][active_pane[ocn]]:GetChild(""):GetCommand("ExpandForDouble")
+			and not PaneExpandsForDouble(ocn, active_pane[ocn])
 			then
-				panes[ocn][active_pane[ocn]]:visible(true):diffusealpha(1)
+				ShowActivePane(ocn)
 				break
 			end
 		end
@@ -139,6 +214,7 @@ return function(event)
 		ocn = 3 - cn
 	end
 	if not panes[cn] then return false end
+	if not (active_pane[cn] and panes[cn][active_pane[cn]]) then return false end
 
 	if event.type == "InputEventType_FirstPress" then
 
@@ -150,36 +226,41 @@ return function(event)
 				active_graph[cn] = (active_graph[cn] % 3) + 1
 			end
 			
-			if #players==1 then
-				af:GetChild(ToEnumShortString(mpn) .. "_AF_Lower"):GetChild("JudgeGraph"):visible(active_graph[cn] == 1)
-				af:GetChild(ToEnumShortString(mpn) .. "_AF_Lower"):GetChild("ArrowGraph"):visible(active_graph[cn] > 1)
-				af:GetChild(ToEnumShortString(mpn) .. "_AF_Lower"):GetChild("ArrowGraph"):GetChild("ArrowPlot"):visible(active_graph[cn] == 2)
-				af:GetChild(ToEnumShortString(mpn) .. "_AF_Lower"):GetChild("ArrowGraph"):GetChild("FootPlot"):visible(active_graph[cn] == 3)
-				af:GetChild(ToEnumShortString(mpn) .. "_AF_Lower"):GetChild("ArrowGraph"):GetChild("Feet"):visible(active_graph[cn] == 3)
-				panes[ocn][3]:playcommand("Graph", {graph=active_graph[cn]})
-			else
-				af:GetChild("P" .. cn .. "_AF_Lower"):GetChild("JudgeGraph"):visible(active_graph[cn] == 1)
-				af:GetChild("P" .. cn .. "_AF_Lower"):GetChild("ArrowGraph"):visible(active_graph[cn] > 1)
-				af:GetChild("P" .. cn .. "_AF_Lower"):GetChild("ArrowGraph"):GetChild("ArrowPlot"):visible(active_graph[cn] == 2)
-				af:GetChild("P" .. cn .. "_AF_Lower"):GetChild("ArrowGraph"):GetChild("FootPlot"):visible(active_graph[cn] == 3)
-				af:GetChild("P" .. cn .. "_AF_Lower"):GetChild("ArrowGraph"):GetChild("Feet"):visible(active_graph[cn] == 3)
+			local lower = #players==1 and af:GetChild(ToEnumShortString(mpn) .. "_AF_Lower") or af:GetChild("P" .. cn .. "_AF_Lower")
+			local judge_graph = lower and lower:GetChild("JudgeGraph")
+			local arrow_graph = lower and lower:GetChild("ArrowGraph")
+
+			if judge_graph then judge_graph:visible(active_graph[cn] == 1) end
+			if arrow_graph then
+				arrow_graph:visible(active_graph[cn] > 1)
+				local arrow_plot = arrow_graph:GetChild("ArrowPlot")
+				local foot_plot = arrow_graph:GetChild("FootPlot")
+				local feet = arrow_graph:GetChild("Feet")
+				if arrow_plot then arrow_plot:visible(active_graph[cn] == 2) end
+				if foot_plot then foot_plot:visible(active_graph[cn] == 3) end
+				if feet then feet:visible(active_graph[cn] == 3) end
 			end
-			panes[cn][2]:playcommand("Graph", {graph=active_graph[cn]})
-			panes[cn][3]:playcommand("Graph", {graph=active_graph[cn]})
+
+			if #players==1 then
+				local secondary_graph_pane = GetPane(ocn, 3)
+				if secondary_graph_pane then secondary_graph_pane:playcommand("Graph", {graph=active_graph[cn]}) end
+			end
+
+			local graph_pane_2 = GetPane(cn, 2)
+			local graph_pane_3 = GetPane(cn, 3)
+			if graph_pane_2 then graph_pane_2:playcommand("Graph", {graph=active_graph[cn]}) end
+			if graph_pane_3 then graph_pane_3:playcommand("Graph", {graph=active_graph[cn]}) end
 		end
 		
 		if event.GameButton == "MenuRight" or event.GameButton == "MenuLeft" then
 			if event.GameButton == "MenuRight" then
-				active_pane[cn] = (active_pane[cn] % #panes[cn]) + 1
+				MoveActivePane(cn, 1)
 				-- don't allow duplicate panes to show in single/double
 				-- if the above change would result in duplicate panes, increment again
 				
 				-- Skip QR code pane if it has already been submitted
 				-- Is there any other instances we want to skip?
-				QRPane = panes[cn][active_pane[cn]]:GetChild(""):GetChild("HelpText")
-				if QRPane ~= nil and QRPane:GetText() == "Score has already been submitted :)" then
-					active_pane[cn] = ((active_pane[cn]) % #panes[cn]) + 1
-				end
+				SkipSubmittedQRPane(cn, 1)
 
 				-- Only show the leaderboard panes (GS/RPG/ITL) if they contain any entries.
 				-- Can't check the results when the screen loads because of response times,
@@ -189,34 +270,16 @@ return function(event)
 				-- but the only way I could get that to work was using global variables.
 				-- This seems to work for now, until the pane system is revamped.
 
-				-- Check if the next pane is a leaderboard pane
-				-- I don't know why the pane numbers are different to the actor names but this works
-				local checkskip = false
-				if panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList") ~= nil then checkskip = true end
-
-				while checkskip do
-					local leaderboardPane = panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList"):GetChild("HighScoreEntry1"):GetChild("Name")
-					-- If there are no results, the first place name would not have changed from "----"
-					if leaderboardPane:GetText() == "----" then 
-						active_pane[cn] = (active_pane[cn] % #panes[cn]) + 1 
-					else
-						-- If the text has changed, that means there is results. Don't skip this pane. Exit loop.
-						checkskip = false
-					end
-					-- If the next pane is not a high score pane, also exit loop
-					if panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList") == nil then checkskip = false end
-				end
+				-- Skip leaderboard panes that exist but still contain no results.
+				SkipEmptyLeaderboardPanes(cn, 1)
 				
 				if #players==1 and active_pane[cn] == active_pane[ocn] then
-					active_pane[cn] = (active_pane[cn] % #panes[cn]) + 1
+					MoveActivePane(cn, 1)
 
 					
 					-- Skip QR code pane if it has already been submitted
 					-- Is there any other instances we want to skip?
-					QRPane = panes[cn][active_pane[cn]]:GetChild(""):GetChild("HelpText")
-					if QRPane ~= nil and QRPane:GetText() == "Score has already been submitted :)" then
-						active_pane[cn] = ((active_pane[cn]) % #panes[cn]) + 1
-					end
+					SkipSubmittedQRPane(cn, 1)
 
 					-- Only show the leaderboard panes (GS/RPG/ITL) if they contain any entries.
 					-- Can't check the results when the screen loads because of response times,
@@ -226,28 +289,13 @@ return function(event)
 					-- but the only way I could get that to work was using global variables.
 					-- This seems to work for now, until the pane system is revamped.
 
-					-- Check if the next pane is a leaderboard pane
-					-- I don't know why the pane numbers are different to the actor names but this works
-					local checkskip = false
-					if panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList") ~= nil then checkskip = true end
-
-					while checkskip do
-						local leaderboardPane = panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList"):GetChild("HighScoreEntry1"):GetChild("Name")
-						-- If there are no results, the first place name would not have changed from "----"
-						if leaderboardPane:GetText() == "----" then 
-							active_pane[cn] = (active_pane[cn] % #panes[cn]) + 1 
-						else
-							-- If the text has changed, that means there is results. Don't skip this pane. Exit loop.
-							checkskip = false
-						end
-						-- If the next pane is not a high score pane, also exit loop
-						if panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList") == nil then checkskip = false end
-					end
+					-- Skip leaderboard panes that exist but still contain no results.
+					SkipEmptyLeaderboardPanes(cn, 1)
 
 				end
 
 			elseif event.GameButton == "MenuLeft" then
-				active_pane[cn] = ((active_pane[cn] - 2) % #panes[cn]) + 1
+				MoveActivePane(cn, -1)
 				-- don't allow duplicate panes to show in single/double
 				-- if the above change would result in duplicate panes, decrement again
 
@@ -259,58 +307,22 @@ return function(event)
 				-- but the only way I could get that to work was using global variables.
 				-- This seems to work for now, until the pane system is revamped.
 
-				-- Check if the next pane is a leaderboard pane
-				-- I don't know why the pane numbers are different to the actor names but this works
-				local checkskip = false
-				if panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList") ~= nil then checkskip = true end
-
-				while checkskip do
-					local leaderboardPane = panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList"):GetChild("HighScoreEntry1"):GetChild("Name")
-					-- If there are no results, the first place name would not have changed from "----"
-					if leaderboardPane:GetText() == "----" then 
-						active_pane[cn] = (active_pane[cn] -2 % #panes[cn]) + 1 
-					else
-						-- If the text has changed, that means there is results. Don't skip this pane. Exit loop.
-						checkskip = false
-					end
-					-- If the next pane is not a high score pane, also exit loop
-					if panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList") == nil then checkskip = false end
-				end
+				-- Skip leaderboard panes that exist but still contain no results.
+				SkipEmptyLeaderboardPanes(cn, -1)
 				
 				-- Skip QR code pane if it has already been submitted
 				-- Is there any other instances we want to skip?
-				QRPane = panes[cn][active_pane[cn]]:GetChild(""):GetChild("HelpText")
-				if QRPane ~= nil and QRPane:GetText() == "Score has already been submitted :)" then
-					active_pane[cn] = ((active_pane[cn] - 2) % #panes[cn]) + 1
-				end
+				SkipSubmittedQRPane(cn, -1)
 					
 				if #players==1 and active_pane[cn] == active_pane[ocn] then
-					active_pane[cn] = ((active_pane[cn] - 2) % #panes[cn]) + 1
+					MoveActivePane(cn, -1)
 
-					-- Check if the next pane is a leaderboard pane
-					-- I don't know why the pane numbers are different to the actor names but this works
-					local checkskip = false
-					if panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList") ~= nil then checkskip = true end
-
-					while checkskip do
-						local leaderboardPane = panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList"):GetChild("HighScoreEntry1"):GetChild("Name")
-						-- If there are no results, the first place name would not have changed from "----"
-						if leaderboardPane:GetText() == "----" then 
-							active_pane[cn] = (active_pane[cn] -2 % #panes[cn]) + 1 
-						else
-							-- If the text has changed, that means there is results. Don't skip this pane. Exit loop.
-							checkskip = false
-						end
-						-- If the next pane is not a high score pane, also exit loop
-						if panes[cn][active_pane[cn]]:GetChild(""):GetChild("HighScoreList") == nil then checkskip = false end
-					end
+					-- Skip leaderboard panes that exist but still contain no results.
+					SkipEmptyLeaderboardPanes(cn, -1)
 					
 					-- Skip QR code pane if it has already been submitted
 					-- Is there any other instances we want to skip?
-					QRPane = panes[cn][active_pane[cn]]:GetChild(""):GetChild("HelpText")
-					if QRPane ~= nil and QRPane:GetText() == "Score has already been submitted :)" then
-						active_pane[cn] = ((active_pane[cn] - 2) % #panes[cn]) + 1
-					end
+					SkipSubmittedQRPane(cn, -1)
 
 
 				end
@@ -320,7 +332,7 @@ return function(event)
 			-- double
 			if style == "OnePlayerTwoSides" then
 				-- if this controller is switching to Pane3 or Pane6, both of which take over both pane widths
-				if panes[cn][active_pane[cn]]:GetChild(""):GetCommand("ExpandForDouble") then
+				if PaneExpandsForDouble(cn, active_pane[cn]) then
 
 					-- hide all panes for both controllers
 					for controller=1,2 do
@@ -329,19 +341,19 @@ return function(event)
 						end
 					end
 					-- and only show the one full-width pane
-					panes[cn][active_pane[cn]]:visible(true):diffusealpha(1)
+					ShowActivePane(cn)
 
 
 				-- if this controller is switching panes while the OTHER controller was viewing Pane3 or Pane6
-				elseif panes[ocn][active_pane[ocn]]:GetChild(""):GetCommand("ExpandForDouble") then
-					panes[ocn][active_pane[ocn]]:visible(false)
-					panes[cn][active_pane[cn]]:visible(true):diffusealpha(1)
+				elseif PaneExpandsForDouble(ocn, active_pane[ocn]) then
+					HideActivePane(ocn)
+					ShowActivePane(cn)
 					-- atribitarily choose to decrement other controller pane
-					active_pane[ocn] = ((active_pane[ocn] - 2) % #panes[ocn]) + 1
+					MoveActivePane(ocn, -1)
 					if active_pane[cn] == active_pane[ocn] then
-						active_pane[ocn] = ((active_pane[ocn] - 2) % #panes[ocn]) + 1
+						MoveActivePane(ocn, -1)
 					end
-					panes[ocn][active_pane[ocn]]:visible(true):diffusealpha(1)
+					ShowActivePane(ocn)
 
 				else
 
@@ -350,8 +362,8 @@ return function(event)
 						panes[cn][i]:visible(false)
 					end
 					-- show the panes we want on both sides
-					panes[cn][active_pane[cn]]:visible(true):diffusealpha(1)
-					panes[ocn][active_pane[ocn]]:visible(true):diffusealpha(1)
+					ShowActivePane(cn)
+					ShowActivePane(ocn)
 				end
 
 
@@ -362,7 +374,7 @@ return function(event)
 					panes[cn][i]:visible(false)
 				end
 				-- only show the pane we want on this side
-				panes[cn][active_pane[cn]]:visible(true):diffusealpha(1)
+				ShowActivePane(cn)
 			end
 
 			af:queuecommand("PaneSwitch")

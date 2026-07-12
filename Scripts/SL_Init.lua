@@ -195,6 +195,15 @@ local GlobalDefaults = {
 
 -- "SL" is a general-purpose table that can be accessed from anywhere
 -- within the theme and stores info that needs to be passed between screens
+SafeJsonDecode = function(body)
+	if type(body) ~= "string" or body == "" then return nil end
+
+	local ok, data = pcall(JsonDecode, body)
+	if not ok or type(data) ~= "table" then return nil end
+
+	return data
+end
+
 SL = {
 	P1 = setmetatable( {}, PlayerDefaults),
 	P2 = setmetatable( {}, PlayerDefaults),
@@ -542,6 +551,43 @@ SL = {
 	-- If a request fails, there will be another key:
 	--    ErrorMessage: string, the reasoning for the failure.
 	Downloads = {}
+}
+
+SL.SafeJsonDecode = SafeJsonDecode
+
+-- Temporary StillRiver diagnostic for SelectMusic churn.  Counts are kept in
+-- memory and summarized occasionally so fast wheel movement does not spam logs
+-- per message.  Remove this once the FunZone overhaul has proven the remaining
+-- hot paths.
+SL.SelectMusicTelemetry = {
+	Enabled = true,
+	IntervalSeconds = 2,
+	LastFlush = GetTimeSinceStart(),
+	Counts = {},
+
+	Pulse = function(self, name)
+		if not self.Enabled then return end
+
+		self.Counts[name] = (self.Counts[name] or 0) + 1
+
+		local now = GetTimeSinceStart()
+		if now - self.LastFlush < self.IntervalSeconds then return end
+
+		local parts = {}
+		for key, value in pairs(self.Counts) do
+			parts[#parts+1] = key .. "=" .. value
+		end
+
+		if #parts > 0 then
+			Trace("[FunZone SelectMusicTelemetry speed=" ..
+				tostring(PREFSMAN:GetPreference("MusicWheelSwitchSpeed")) ..
+				" dt=" .. string.format("%.2f", now - self.LastFlush) ..
+				" " .. table.concat(parts, " "))
+		end
+
+		self.Counts = {}
+		self.LastFlush = now
+	end
 }
 
 

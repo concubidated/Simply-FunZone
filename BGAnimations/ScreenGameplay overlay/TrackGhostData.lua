@@ -72,7 +72,7 @@ return Def.Actor{
 			if FILEMAN:DoesFileExist(path) then
 				if f:Open(path, 1) then			
 					ghost = f:Read()
-					ghost = JsonDecode(ghost)
+					ghost = SL.SafeJsonDecode(ghost)
 		
 					-- Get ghost data for the scoring system in use
 					if mods.ShowEXScore then ghost = ghost["ex"] else ghost = ghost["itg"] end

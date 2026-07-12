@@ -29,6 +29,7 @@ end
 
 local isRpgFolder=function(self)
 	local song = GAMESTATE:GetCurrentSong()
+	if not song then return false end
 	local group = song:GetGroupName()
 	local rpgsong = string.find(string.upper(group), "STAMINA RPG 8")
 	return rpgsong
@@ -36,11 +37,12 @@ end
 
 
 -- -----------------------------------------------------------------------
-WriteRpgFile = function(dir, song, rate)
+local WriteRpgFile = function(dir, song, rate)
 	local path = dir.. "SRPG8.rpg"
 	local f = RageFileUtil:CreateRageFile()
 	local existing = ""
 	local recordType
+	local oldrate
 	rate = tonumber(string.format("%.0f",rate*100))/100
 	--local songrecord
 	if FILEMAN:DoesFileExist(path) then
@@ -51,13 +53,13 @@ WriteRpgFile = function(dir, song, rate)
 			-- remove some annoying characters that break lua string function for some reason???
 			song = song:gsub("%W","_")
 
-			songposition = string.find(existing,song)
+			local songposition = string.find(existing,song)
 			if songposition == nil then recordType = "new"
 			else
 				-- find position of next equals sign
-				equals = string.find(existing,"=",songposition)
+				local equals = string.find(existing,"=",songposition)
 				-- find end of the line
-				newline = string.find(existing,"\n",equals)
+				local newline = string.find(existing,"\n",equals)
 				-- if end of file, get the last 
 				if newline == nil then newline = string.len(existing) end
 				
@@ -65,7 +67,7 @@ WriteRpgFile = function(dir, song, rate)
 				oldrate = string.sub(existing,equals+1,newline)
 				oldrate = tonumber(oldrate)
 
-				if rate > oldrate then
+				if oldrate and rate > oldrate then
 					recordType = "beat"
 				else
 					recordType = "lost"
@@ -81,8 +83,8 @@ WriteRpgFile = function(dir, song, rate)
 			f:Write(existing..song .. "=" .. rate .. "\n") 
 		end
 		if recordType == "beat" then 
-			oldstring = song .. "=" .. oldrate
-			newstring = song .. "=" .. rate
+			local oldstring = song .. "=" .. oldrate
+			local newstring = song .. "=" .. rate
 			local data = string.gsub(existing,oldstring,newstring)
 			f:Write(data)
 		end
@@ -105,7 +107,9 @@ local t = Def.ActorFrame {
 			local dir = PROFILEMAN:GetProfileDir(profile_slot[player])
 			local stats = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
 
-			local song = GAMESTATE:GetCurrentSong():GetDisplayFullTitle()
+			local currentSong = GAMESTATE:GetCurrentSong()
+			if not currentSong then return end
+			local song = currentSong:GetDisplayFullTitle()
 			-- Do the same validation as GrooveStats.
 			-- This checks important things like timing windows, addition/removal of arrows, etc.
 			local _, valid = ValidForGrooveStats(player)

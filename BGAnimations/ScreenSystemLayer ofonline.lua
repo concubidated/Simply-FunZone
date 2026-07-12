@@ -8,8 +8,13 @@ local connectedtoserver = THEME:GetString("ScreenSystemLayer","OFOnlineConnected
 local errormessage = THEME:GetString("ScreenSystemLayer","OFOnlineErrorMessage")
 local scoresavetimeout = THEME:GetString("ScreenSystemLayer","OFScoreSaveTimeout")
 
+local function getTopScreenName()
+	local top = SCREENMAN:GetTopScreen()
+	return top and top:GetName() or ""
+end
+
 local function getStartScreenPos()
-	if SCREENMAN:GetTopScreen():GetName() == "ScreenEvaluationStage" then
+	if getTopScreenName() == "ScreenEvaluationStage" then
 		return SCREEN_BOTTOM + 20
 	else
 		return SCREEN_TOP - 20
@@ -17,7 +22,7 @@ local function getStartScreenPos()
 end
 
 local function getAnimateToScreenPos()
-	if SCREENMAN:GetTopScreen():GetName() == "ScreenEvaluationStage" then
+	if getTopScreenName() == "ScreenEvaluationStage" then
 		return SCREEN_BOTTOM - 13
 	else
 		return (SCREEN_TOP + (SCREEN_TOP + 17))
@@ -51,7 +56,7 @@ t[#t+1] = Def.ActorFrame{
 		-- don't use custom MESSAGEMAN's corresponding MessageCommand here because it activates twice on ScreenTitleJoin/ScreenTitleMenu (doesn't match up with the child "Status")
 		-- OFOnlineNotificationMessageCommand=function(self)
 		MessageOFNetworkResponseMessageCommand=function(self)
-			if SCREENMAN:GetTopScreen():GetName() == "ScreenProfileSave" then
+			if getTopScreenName() == "ScreenProfileSave" then
 				self:finishtweening():y( getStartScreenPos() ):easeoutexpo(0.75):diffusealpha(1):y( getAnimateToScreenPos() ):sleep(1.5):easeinexpo(0.75):diffusealpha(0)
 			end
 		end,
@@ -69,12 +74,13 @@ for ind,plr in pairs(PlayerNumber) do
 		ActionPlayCommand=function(self)
 			-- don't use custom MESSAGEMAN here because it activates twice on ScreenTitleJoin/ScreenTitleMenu (doesn't match up with the child "Status")
 			-- MESSAGEMAN:Broadcast("OFOnlineNotification")
-			if SCREENMAN:GetTopScreen():GetName() == "ScreenEvaluationStage" then
+			if getTopScreenName() == "ScreenEvaluationStage" then
 				self:zoom(0.75 * (SCREEN_HEIGHT/480))
 			end
 			self:finishtweening():y( getStartScreenPos() ):easeoutexpo(0.75):diffusealpha(1):y( getAnimateToScreenPos() ):sleep(1.5):easeinexpo(0.75):diffusealpha(0)
 		end,
 		MessageOFNetworkResponseMessageCommand=function(self,params)
+			if type(params) ~= "table" then return end
 			if params.PlayerNumber == plr then
 				local xPosSeparation = SAFE_WIDTH + WideScale(127,140)
 				self:x( plr == PLAYER_1 and xPosSeparation or SCREEN_WIDTH - xPosSeparation)

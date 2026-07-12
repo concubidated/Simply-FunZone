@@ -20,36 +20,45 @@ local function TotalCourseLength(player)
     -- i use this method instead of TrailUtil.GetTotalSeconds because that leaves unused time at the end in graphs
     local trail = GAMESTATE:GetCurrentTrail(player)
     local t = 0
+    if not trail then return t end
     for te in ivalues(trail:GetTrailEntries()) do
-        t = t + te:GetSong():GetLastSecond()
+        local song = te:GetSong()
+        if song then t = t + song:GetLastSecond() end
     end
 
     return t
 end
 
 -- sequential_offsets gathered in ./BGAnimations/ScreenGameplay overlay/JudgmentOffsetTracking.lua
-local sequential_offsets = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].sequential_offsets
-local death_second = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].DeathSecond
-local MusicRate = SL.Global.ActiveModifiers.MusicRate
+local storage = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1] or {}
+local sequential_offsets = storage.sequential_offsets
+if type(sequential_offsets) ~= "table" then return NullActor end
+
+local death_second = storage.DeathSecond
+local MusicRate = SL.Global.ActiveModifiers.MusicRate or 1
+if MusicRate == 0 then MusicRate = 1 end
 
 -- a table to store the AMV's vertices
 -- this will be a table of tables, to get around ActorMultiVertex limitations on D3D renderer
 local vertsTable= {}
 
 local Steps = GAMESTATE:GetCurrentSteps(player)
+if not Steps then return NullActor end
 local TimingData = Steps:GetTimingData()
 -- FirstSecond and LastSecond are used in scaling the x-coordinates of the AMV's vertices
 local FirstSecond = math.min(TimingData:GetElapsedTimeFromBeat(0), 0)
-local LastSecond = (not iscourse) and GAMESTATE:GetCurrentSong():GetLastSecond() or TotalCourseLength(player)
+local song = GAMESTATE:GetCurrentSong()
+local LastSecond = (not iscourse) and (song and song:GetLastSecond() or nil) or TotalCourseLength(player)
+if not LastSecond or LastSecond <= FirstSecond then return NullActor end
 
 -- variables that will be used and re-used in the loop while calculating the AMV's vertices
-local Offset, CurrentSecond, TimingWindow, x, y, c, r, g, b
+local Offset, CurrentSecond, TimingWindow, x, y, c, r, g, b, EarlyHit, EarlyOffset, HeldMiss, abs_offset
 
 -- ---------------------------------------------
 -- scale worst_window to the worst judgment hit in the song
 -- start at Excellent window as the worst window since most quads are
 -- hard to make sense of visually
-local worst_window = GetTimingWindow(math.max(2, GetWorstJudgment(sequential_offsets)))
+local worst_window = GetTimingWindow(math.max(2, GetWorstJudgment(sequential_offsets) or 2))
 
 -- cap worst_window to Great if selected by the player
 if mods.ScaleGraph then
@@ -233,7 +242,8 @@ end
 local af = Def.ActorFrame{}
 
 if iscourse then
-	local trailEntries = GAMESTATE:GetCurrentTrail(player):GetTrailEntries()
+	local trail = GAMESTATE:GetCurrentTrail(player)
+	local trailEntries = trail and trail:GetTrailEntries() or {}
 	local curSecs = 0
 	
 	for i=1,#trailEntries do

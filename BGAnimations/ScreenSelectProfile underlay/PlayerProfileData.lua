@@ -90,7 +90,10 @@ local RetrieveProfileData = function(profile, dir)
 	local theme_name = THEME:GetThemeDisplayName()
 	local path = dir .. theme_name .. " UserPrefs.ini"
 	if FILEMAN:DoesFileExist(path) then
-		return IniFile.ReadFile(path)[theme_name]
+		local prefs = IniFile.ReadFile(path)
+		if type(prefs) == "table" and type(prefs[theme_name]) == "table" then
+			return prefs[theme_name]
+		end
 	end
 	return false
 end

@@ -20,9 +20,11 @@ if SongOrCourse and SongOrCourse:HasBanner() then
 		Name="Banner",
 		InitCommand=function(self)
 			if GAMESTATE:IsCourseMode() then
-				self:LoadFromCourse( GAMESTATE:GetCurrentCourse() ):animate(false)
+				local course = GAMESTATE:GetCurrentCourse()
+				if course then self:LoadFromCourse(course):animate(false) end
 			else
-				self:LoadFromSong( GAMESTATE:GetCurrentSong() )
+				local song = GAMESTATE:GetCurrentSong()
+				if song then self:LoadFromSong(song) end
 			end
 			self:setsize(banner.width, 164)
 			if SL.Global.GameMode=="Casual" or GAMESTATE:IsCourseMode() then
@@ -96,7 +98,8 @@ af[#af+1] = Def.Quad{
 -- song/course title text
 af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 	InitCommand=function(self)
-		local songtitle = (GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse():GetDisplayFullTitle()) or GAMESTATE:GetCurrentSong():GetDisplayFullTitle()
+		local songOrCourse = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong()
+		local songtitle = songOrCourse and songOrCourse:GetDisplayFullTitle() or ""
 		if songtitle then
 			self:settext(songtitle)
 			if SL.Global.GameMode=="Casual" then
@@ -232,11 +235,6 @@ af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 					local song = GAMESTATE:GetCurrentSong()
 					if song then
 						duration = song:MusicLengthSeconds()
-					else
-						local group_name = SCREENMAN:GetTopScreen():GetMusicWheel():GetSelectedSection()
-						if group_name then
-							duration = group_durations[group_name]
-						end
 					end
 				end
 

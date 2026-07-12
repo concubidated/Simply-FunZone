@@ -361,7 +361,7 @@ local NewSessionRequestProcessor = function(res, gsInfo)
 		return
 	end
 
-	local data = JsonDecode(res.body)
+	local data = SL.SafeJsonDecode(res.body)
 	if data == nil then return end
 
 	local services = data["servicesAllowed"]

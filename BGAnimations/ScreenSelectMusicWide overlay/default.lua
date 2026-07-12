@@ -40,6 +40,10 @@ local af = Def.ActorFrame{
 		SCREENMAN:GetTopScreen():SetNextScreenName("ScreenSelectMusicWide"):StartTransitioningScreen("SM_GoToNextScreen")		
 	end,
 
+	PreviousSongMessageCommand=function(self) SL.SelectMusicTelemetry:Pulse("wide.prev") end,
+	NextSongMessageCommand=function(self) SL.SelectMusicTelemetry:Pulse("wide.next") end,
+	CurrentSongChangedMessageCommand=function(self) SL.SelectMusicTelemetry:Pulse("wide.song") end,
+
 	-- ---------------------------------------------------
 	--  first, load files that contain no visual elements, just code that needs to run
 

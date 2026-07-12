@@ -6,13 +6,16 @@ local pn = ToEnumShortString(player)
 
 -- table of offset values obtained during this song's playthrough
 -- obtained via ./BGAnimations/ScreenGameplay overlay/JudgmentOffsetTracking.lua
-local sequential_offsets = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1].sequential_offsets
+local storage = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1] or {}
+local sequential_offsets = storage.sequential_offsets
+if type(sequential_offsets) ~= "table" then return NullActor end
+
 local pane_width, pane_height = 300, 180
 local topbar_height = 26
 local bottombar_height = 13
 
 -- Determine timing windows that need to be covered in the histogram based on worst judgment hit during gameplay
-local num_judgments_available = math.max(3, GetWorstJudgment(sequential_offsets))
+local num_judgments_available = math.max(3, GetWorstJudgment(sequential_offsets) or 3)
 local worst_window = GetTimingWindow(num_judgments_available)
 
 -- ---------------------------------------------

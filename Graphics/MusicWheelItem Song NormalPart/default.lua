@@ -18,6 +18,7 @@ if ThemePrefs.Get("SongSelectBG") ~= "Off" then
 		InitCommand=function(self)
 			self:horizalign(right):addx(item_width):scaletoclipped(item_width-50, _screen.h/num_visible_items-2):visible(true)
 			self:diffusealpha(0.25):fadeleft(1):SetDecodeMovie(false)
+			self.LastSongSelectBGPath = ""
 		end,
 		SetCommand=function(self, params)
 			local Song = params.Song
@@ -35,7 +36,11 @@ if ThemePrefs.Get("SongSelectBG") ~= "Off" then
 				end
 					
 				if Path ~= nil then
-					self:Load( Path ):visible(true)
+					if Path ~= self.LastSongSelectBGPath then
+						self:Load( Path )
+						self.LastSongSelectBGPath = Path
+					end
+					self:visible(true)
 				else
 					self:visible(false)
 				end
@@ -50,7 +55,11 @@ if ThemePrefs.Get("SongSelectBG") ~= "Off" then
 				end
 					
 				if Path ~= nil then
-					self:Load( Path ):visible(true)
+					if Path ~= self.LastSongSelectBGPath then
+						self:Load( Path )
+						self.LastSongSelectBGPath = Path
+					end
+					self:visible(true)
 				else
 					self:visible(false)
 				end

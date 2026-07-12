@@ -5,10 +5,62 @@ local NumEntries = 10
 local SetEntryText = function(rank, name, score, date, actor)
 	if actor == nil then return end
 
-	actor:GetChild("Rank"):settext(rank)
-	actor:GetChild("Name"):settext(name)
-	actor:GetChild("Score"):settext(score)
-	actor:GetChild("Date"):settext(date)
+	local rank_text = actor:GetChild("Rank")
+	local name_text = actor:GetChild("Name")
+	local score_text = actor:GetChild("Score")
+	local date_text = actor:GetChild("Date")
+
+	if rank_text then rank_text:settext(rank) end
+	if name_text then name_text:settext(name) end
+	if score_text then score_text:settext(score) end
+	if date_text then date_text:settext(date) end
+end
+
+local GetChild = function(actor, name)
+	return actor and actor:GetChild(name) or nil
+end
+
+local GetPaneBody = function(panes, pane_number, side_number)
+	local pane = GetChild(panes, ("Pane%i_SideP%i"):format(pane_number, side_number))
+	return GetChild(pane, "")
+end
+
+local GetHighScoreEntry = function(pane, entry_number)
+	local high_score_list = GetChild(pane, "HighScoreList")
+	return GetChild(high_score_list, "HighScoreEntry"..entry_number)
+end
+
+local DiffuseEntryScore = function(entry, diffuse)
+	local score = GetChild(entry, "Score")
+	if score then score:diffuse(diffuse) end
+end
+
+local MarkQRSubmitted = function(QRPane)
+	local qr_code = GetChild(QRPane, "QRCode")
+	local help_text = GetChild(QRPane, "HelpText")
+
+	if qr_code then qr_code:queuecommand("Hide") end
+	if help_text then help_text:settext("Score has already been submitted :)") end
+end
+
+local GetScreenEvalPanes = function()
+	local top_screen = SCREENMAN:GetTopScreen()
+	local overlay = GetChild(top_screen, "Overlay")
+	local common = GetChild(overlay, "ScreenEval Common")
+	return GetChild(common, "Panes")
+end
+
+local RestorePaneAndHideQR = function(side_number, pane_number)
+	local panes = GetScreenEvalPanes()
+	if not panes then return false end
+
+	local pane = GetChild(panes, ("Pane%i_SideP%i"):format(pane_number, side_number))
+	if pane then pane:visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1) end
+
+	local QRPane = GetChild(panes, ("Pane7_SideP%i"):format(side_number))
+	if QRPane then QRPane:visible(true):sleep(0.2):diffusealpha(0) end
+
+	return pane ~= nil or QRPane ~= nil
 end
 
 local GetMachineTag = function(gsEntry)
@@ -93,7 +145,9 @@ local GetRescoredJudgmentCounts = function(player)
 end
 
 local AttemptDownloads = function(res)
-	local data = JsonDecode(res.body)
+	local data = SL.SafeJsonDecode(res.body)
+	if not data then return end
+
 	for i=1,2 do
 		local playerStr = "player"..i
 		local events = {"rpg", "itl"}
@@ -138,7 +192,8 @@ local ScreenshotQR = function(playernum)
 	local month = ("%02d-%s"):format(MonthOfYear()+1, THEME:GetString("Months", "Month"..MonthOfYear()+1))
 
 	-- get the FullTitle of the song or course that was just played
-	local title = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse():GetDisplayFullTitle() or GAMESTATE:GetCurrentSong():GetDisplayFullTitle()
+	local SongOrCourse = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong()
+	local title = SongOrCourse and SongOrCourse:GetDisplayFullTitle() or ""
 
 	-- song titles can be very long, and the engine's SaveScreenshot() function
 	-- is already hardcoded to make the filename long via DateTime::GetNowDateTime()
@@ -177,8 +232,12 @@ local ScreenshotQR = function(playernum)
 end
 
 local AutoSubmitRequestProcessor = function(res, overlay)
-	local P1SubmitText = overlay:GetChild("AutoSubmitMaster"):GetChild("P1SubmitText")
-	local P2SubmitText = overlay:GetChild("AutoSubmitMaster"):GetChild("P2SubmitText")
+	if not res then return end
+	if not overlay then return end
+
+	local autoSubmitMaster = GetChild(overlay, "AutoSubmitMaster")
+	local P1SubmitText = GetChild(autoSubmitMaster, "P1SubmitText")
+	local P2SubmitText = GetChild(autoSubmitMaster, "P2SubmitText")
 
 	if res.error or res.statusCode ~= 200 then
 		local error = res.error and ToEnumShortString(res.error) or nil
@@ -192,23 +251,23 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 		return
 	end
 
-	local panes = overlay:GetChild("Panes")
+	local panes = GetChild(overlay, "Panes")
 	local shouldDisplayOverlay = false
 
 	-- Hijack the leaderboard pane to display the GrooveStats leaderboards.
 	if panes then
-		local data = JsonDecode(res.body)
-		local headers = res.headers
+		local data = SL.SafeJsonDecode(res.body)
+		local headers = res.headers or {}
 		for i=1,2 do
 			local playerStr = "player"..i
 			local entryNum = 1
 			local rivalNum = 1
 			-- Pane 8 is the groovestats highscores pane.
-			local highScorePane = panes:GetChild("Pane8_SideP"..i):GetChild("")
-			local QRPane = panes:GetChild("Pane7_SideP"..i):GetChild("")
+			local highScorePane = GetPaneBody(panes, 8, i)
+			local QRPane = GetPaneBody(panes, 7, i)
 
-			local RPGPane = panes:GetChild("Pane9_SideP"..i):GetChild("")
-			local ITLPane = panes:GetChild("Pane10_SideP"..i):GetChild("")
+			local RPGPane = GetPaneBody(panes, 9, i)
+			local ITLPane = GetPaneBody(panes, 10, i)
 
 			local boogie = false
 			local boogie_ex = false
@@ -243,9 +302,10 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 						showExScore and data[playerStr]["exLeaderboard"] or data[playerStr]["gsLeaderboard"]
 					)
 
-					if leaderboardData then
+					if type(leaderboardData) == "table" and highScorePane then
 						for gsEntry in ivalues(leaderboardData) do
-							local entry = highScorePane:GetChild("HighScoreList"):GetChild("HighScoreEntry"..entryNum)
+							local entry = GetHighScoreEntry(highScorePane, entryNum)
+							if not entry then break end
 							entry:stoptweening()
 							entry:diffuse(Color.White)
 							SetEntryText(
@@ -259,9 +319,9 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 							-- TODO(teejusb): Determine how we want to easily display EX scores.
 							-- For now just highlight blue because it's simple.
 							if showExScore then
-								entry:GetChild("Score"):diffuse(SL.JudgmentColors["FA+"][1])
+								DiffuseEntryScore(entry, SL.JudgmentColors["FA+"][1])
 							else
-								entry:GetChild("Score"):diffuse(Color.White)
+								DiffuseEntryScore(entry, Color.White)
 							end
 
 							if gsEntry["isRival"] then
@@ -273,21 +333,19 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 							end
 
 							if gsEntry["isFail"] then
-								entry:GetChild("Score"):diffuse(Color.Red)
+								DiffuseEntryScore(entry, Color.Red)
 							end
 							entryNum = entryNum + 1
 						end
 
-						QRPane:GetChild("QRCode"):queuecommand("Hide")
-						QRPane:GetChild("HelpText"):settext("Score has already been submitted :)")
+						MarkQRSubmitted(QRPane)
 						if i == 1 and P1SubmitText then
 							P1SubmitText:queuecommand("Submit")
 						elseif i == 2 and P2SubmitText then
 							P2SubmitText:queuecommand("Submit")
 						end
 					elseif data[playerStr]["result"] == "score-added" or data[playerStr]["result"] == "improved" then
-						QRPane:GetChild("QRCode"):queuecommand("Hide")
-						QRPane:GetChild("HelpText"):settext("Score has already been submitted :)")
+						MarkQRSubmitted(QRPane)
 						if i == 1 and P1SubmitText then
 							P1SubmitText:queuecommand("Submit")
 						elseif i == 2 and P2SubmitText then
@@ -295,11 +353,12 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 						end
 					end
 
-					if data[playerStr]["rpg"] then
+					if data[playerStr]["rpg"] and RPGPane and type(data[playerStr]["rpg"]["rpgLeaderboard"]) == "table" then
 						local rpgEntry = 1
 						local rpgRival = 1
 						for gsEntry in ivalues(data[playerStr]["rpg"]["rpgLeaderboard"]) do
-							local entry = RPGPane:GetChild("HighScoreList"):GetChild("HighScoreEntry"..rpgEntry)
+							local entry = GetHighScoreEntry(RPGPane, rpgEntry)
+							if not entry then break end
 							entry:stoptweening()
 							entry:diffuse(Color.White)
 							SetEntryText(
@@ -318,17 +377,18 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 							end
 
 							if gsEntry["isFail"] then
-								entry:GetChild("Score"):diffuse(Color.Red)
+								DiffuseEntryScore(entry, Color.Red)
 							end
 							rpgEntry = rpgEntry + 1
 						end
 					end
 
-					if data[playerStr]["itl"] then
+					if data[playerStr]["itl"] and ITLPane and type(data[playerStr]["itl"]["itlLeaderboard"]) == "table" then
 						local itlEntry = 1
 						local itlRival = 1
 						for gsEntry in ivalues(data[playerStr]["itl"]["itlLeaderboard"]) do
-							local entry = ITLPane:GetChild("HighScoreList"):GetChild("HighScoreEntry"..itlEntry)
+							local entry = GetHighScoreEntry(ITLPane, itlEntry)
+							if not entry then break end
 							entry:stoptweening()
 							entry:diffuse(Color.White)
 							SetEntryText(
@@ -339,7 +399,7 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 								entry
 							)
 							-- ITL leaderboard is EX scores, so highlight them blue.
-							entry:GetChild("Score"):diffuse(SL.JudgmentColors["FA+"][1])
+							DiffuseEntryScore(entry, SL.JudgmentColors["FA+"][1])
 							if gsEntry["isRival"] then
 								entry:diffuse(color("#BD94FF"))
 								itlRival = itlRival + 1
@@ -349,7 +409,7 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 							end
 
 							if gsEntry["isFail"] then
-								entry:GetChild("Score"):diffuse(Color.Red)
+								DiffuseEntryScore(entry, Color.Red)
 							end
 							itlEntry = itlEntry + 1
 						end
@@ -357,58 +417,64 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 
 					-- Only display the overlay on the sides that are actually joined.
 					if ToEnumShortString("PLAYER_P"..i) == "P"..side and (data[playerStr]["rpg"] or data[playerStr]["itl"]) then
-						local eventAf = overlay:GetChild("AutoSubmitMaster"):GetChild("EventOverlay"):GetChild("P"..i.."EventAf")
-						eventAf:playcommand("Show", {data=data[playerStr]})
-						shouldDisplayOverlay = true
+						local eventOverlay = GetChild(autoSubmitMaster, "EventOverlay")
+						local eventAf = GetChild(eventOverlay, "P"..i.."EventAf")
+						if eventAf then
+							eventAf:playcommand("Show", {data=data[playerStr]})
+							shouldDisplayOverlay = true
+						end
 					end
 
 					-- Only update PB/WR messages on the side that is joined
 					if ToEnumShortString("PLAYER_P"..i) == "P"..side then
-						local upperPane = overlay:GetChild("P"..side.."_AF_Upper")
+						local upperPane = GetChild(overlay, "P"..side.."_AF_Upper")
 						if upperPane then
 							if data[playerStr]["result"] == "score-added" or data[playerStr]["result"] == "improved" then
-								local recordText = overlay:GetChild("AutoSubmitMaster"):GetChild("P"..side.."RecordText")
-								local GSIcon = overlay:GetChild("AutoSubmitMaster"):GetChild("P"..side.."GrooveStats_Logo")
-								local BSIcon = overlay:GetChild("AutoSubmitMaster"):GetChild("P"..side.."BoogieStats_Logo")
-								local BSEXIcon = overlay:GetChild("AutoSubmitMaster"):GetChild("P"..side.."BoogieStatsEX_Logo")
+								local recordText = GetChild(autoSubmitMaster, "P"..side.."RecordText")
+								local GSIcon = GetChild(autoSubmitMaster, "P"..side.."GrooveStats_Logo")
+								local BSIcon = GetChild(autoSubmitMaster, "P"..side.."BoogieStats_Logo")
+								local BSEXIcon = GetChild(autoSubmitMaster, "P"..side.."BoogieStatsEX_Logo")
 
-								recordText:visible(true)
+								if recordText then recordText:visible(true) end
 
-								if boogie then BSIcon:visible(true)
-								elseif boogie_ex then BSEXIcon:visible(true)
-								else GSIcon:visible(true) end
+								if boogie then
+									if BSIcon then BSIcon:visible(true) end
+								elseif boogie_ex then
+									if BSEXIcon then BSEXIcon:visible(true) end
+								else
+									if GSIcon then GSIcon:visible(true) end
+								end
 
-								recordText:diffuseshift():effectcolor1(Color.White):effectcolor2(Color.Yellow):effectperiod(3)
+								if recordText then recordText:diffuseshift():effectcolor1(Color.White):effectcolor2(Color.Yellow):effectperiod(3) end
 								local soundDir = THEME:GetCurrentThemeDirectory() .. "Sounds/"
 								if personalRank == 1 then
 									local worldRecordText = "World Record!"
 									if showExScore then
 										worldRecordText = worldRecordText .. " (EX)"
 									end
-									recordText:settext(worldRecordText)
+									if recordText then recordText:settext(worldRecordText) end
 									-- Play random sound in Sounds/Evaluation WR/
 									soundDir = soundDir .. "Evaluation WR/"
-									audio_files = findFiles(soundDir)
+									local audio_files = findFiles(soundDir)
 									if #audio_files > 0 then
 										SOUND:PlayOnce(audio_files[math.random(#audio_files)])
 									end
 								else
-									recordText:settext("Personal Best!")
+									if recordText then recordText:settext("Personal Best!") end
 									-- Play random sound in Sounds/Evaluation PB/
 									soundDir = soundDir .. "Evaluation PB/"
-									audio_files = findFiles(soundDir)
+									local audio_files = findFiles(soundDir)
 									if #audio_files > 0 then
 										SOUND:PlayOnce(audio_files[math.random(#audio_files)])
 									end
 								end
-								local recordTextXStart = recordText:GetX() - recordText:GetWidth()*recordText:GetZoom()/2
-								local GSIconWidth = GSIcon:GetWidth()*GSIcon:GetZoom()
-								local BSIconWidth = BSIcon:GetWidth()*BSIcon:GetZoom()
-								local BSEXIconWidth = BSEXIcon:GetWidth()*BSEXIcon:GetZoom()
-								-- This will automatically adjust based on the length of the recordText length.
-								GSIcon:xy(recordTextXStart - GSIconWidth/2, recordText:GetY())
-								BSIcon:xy(recordTextXStart - BSIconWidth/2, recordText:GetY())
-								BSEXIcon:xy(recordTextXStart - BSEXIconWidth/2, recordText:GetY())
+								if recordText then
+									local recordTextXStart = recordText:GetX() - recordText:GetWidth()*recordText:GetZoom()/2
+									-- This will automatically adjust based on the length of the recordText length.
+									if GSIcon then GSIcon:xy(recordTextXStart - GSIcon:GetWidth()*GSIcon:GetZoom()/2, recordText:GetY()) end
+									if BSIcon then BSIcon:xy(recordTextXStart - BSIcon:GetWidth()*BSIcon:GetZoom()/2, recordText:GetY()) end
+									if BSEXIcon then BSEXIcon:xy(recordTextXStart - BSEXIcon:GetWidth()*BSEXIcon:GetZoom()/2, recordText:GetY()) end
+								end
 							end
 						end
 					end
@@ -417,9 +483,10 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 
 			-- Empty out any remaining entries on a successful response.
 			-- For failed responses we fallback to the scores available in the machine.
-			if res["status"] == "success" then
+			if highScorePane and res["status"] == "success" then
 				for j=entryNum, NumEntries do
-					local entry = highScorePane:GetChild("HighScoreList"):GetChild("HighScoreEntry"..j)
+					local entry = GetHighScoreEntry(highScorePane, j)
+					if not entry then break end
 					entry:stoptweening()
 					-- We didn't get any scores if i is still == 1.
 					if j == 1 then
@@ -434,8 +501,11 @@ local AutoSubmitRequestProcessor = function(res, overlay)
 	end
 
 	if shouldDisplayOverlay then
-		overlay:GetChild("AutoSubmitMaster"):GetChild("EventOverlay"):visible(true)
-		overlay:queuecommand("DirectInputToEventOverlayHandler")
+		local eventOverlay = GetChild(autoSubmitMaster, "EventOverlay")
+		if eventOverlay then
+			eventOverlay:visible(true)
+			overlay:queuecommand("DirectInputToEventOverlayHandler")
+		end
 	end
 
 	if ThemePrefs.Get("AutoDownloadUnlocks") then
@@ -535,15 +605,17 @@ local af = Def.ActorFrame {
 						-- For example in versus, if one player fails and the other passes, we
 						-- want to show that the first player score won't be submitted.
 						local submitText = self:GetParent():GetChild("P"..i.."SubmitText")
-						submitText:visible(false)
+						if submitText then submitText:visible(false) end
 					end
 				end
 			end
 			-- Only send the request if it's applicable.
 			if sendRequest then
 				-- Unjoined players won't have the text displayed.
-				self:GetParent():GetChild("P1SubmitText"):settext("Submitting ...")
-				self:GetParent():GetChild("P2SubmitText"):settext("Submitting ...")
+				local P1SubmitText = self:GetParent():GetChild("P1SubmitText")
+				local P2SubmitText = self:GetParent():GetChild("P2SubmitText")
+				if P1SubmitText then P1SubmitText:settext("Submitting ...") end
+				if P2SubmitText then P2SubmitText:settext("Submitting ...") end
 				self:playcommand("MakeGrooveStatsRequest", {
 					endpoint="score-submit.php?"..NETWORK:EncodeQueryParameters(query),
 					method="POST",
@@ -551,7 +623,7 @@ local af = Def.ActorFrame {
 					body=JsonEncode(body),
 					timeout=30,
 					callback=AutoSubmitRequestProcessor,
-					args=SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("ScreenEval Common"),
+					args=GetChild(GetChild(SCREENMAN:GetTopScreen(), "Overlay"), "ScreenEval Common"),
 				})
 			end
 		end
@@ -582,13 +654,11 @@ af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal").. {
 		DiffuseEmojis(self)
 		
 		if PROFILEMAN:IsPersistentProfile(PLAYER_1) then
-			local p2pane = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("ScreenEval Common"):GetChild("Panes")
 			if PROFILEMAN:IsPersistentProfile(PLAYER_2) then
-				p2pane:GetChild("Pane" .. SL["P2"].EvalPanePrimary .. "_SideP2"):visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1)
+				RestorePaneAndHideQR(2, SL["P2"].EvalPanePrimary)
 			else
-				p2pane:GetChild("Pane" .. SL["P2"].EvalPaneSecondary .. "_SideP2"):visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1)
+				RestorePaneAndHideQR(2, SL["P2"].EvalPaneSecondary)
 			end
-			p2pane:GetChild("Pane7_SideP2"):visible(true):sleep(0.2):diffusealpha(0)
 			self:sleep(0.1):queuecommand("SS")
 		end
 	end,
@@ -596,13 +666,11 @@ af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal").. {
 		self:settext("Timed Out")
 		
 		if PROFILEMAN:IsPersistentProfile(PLAYER_1) then
-			local p2pane = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("ScreenEval Common"):GetChild("Panes")
 			if PROFILEMAN:IsPersistentProfile(PLAYER_2) then
-				p2pane:GetChild("Pane" .. SL["P2"].EvalPanePrimary .. "_SideP2"):visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1)
+				RestorePaneAndHideQR(2, SL["P2"].EvalPanePrimary)
 			else
-				p2pane:GetChild("Pane" .. SL["P2"].EvalPaneSecondary .. "_SideP2"):visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1)
+				RestorePaneAndHideQR(2, SL["P2"].EvalPaneSecondary)
 			end
-			p2pane:GetChild("Pane7_SideP2"):visible(true):sleep(0.2):diffusealpha(0)
 			self:sleep(0.1):queuecommand("SS")
 		end
 	end,
@@ -629,13 +697,11 @@ af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal").. {
 		DiffuseEmojis(self)
 		
 		if PROFILEMAN:IsPersistentProfile(PLAYER_2) then
-			local p1pane = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("ScreenEval Common"):GetChild("Panes")
 			if PROFILEMAN:IsPersistentProfile(PLAYER_1) then
-				p1pane:GetChild("Pane" .. SL["P1"].EvalPanePrimary .. "_SideP1"):visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1)
+				RestorePaneAndHideQR(1, SL["P1"].EvalPanePrimary)
 			else
-				p1pane:GetChild("Pane" .. SL["P1"].EvalPaneSecondary .. "_SideP1"):visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1)
+				RestorePaneAndHideQR(1, SL["P1"].EvalPaneSecondary)
 			end
-			p1pane:GetChild("Pane7_SideP1"):visible(true):sleep(0.2):diffusealpha(0)
 			self:sleep(0.1):queuecommand("SS")
 		end
 	end,
@@ -643,13 +709,11 @@ af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal").. {
 		self:settext("Timed Out")
 		
 		if PROFILEMAN:IsPersistentProfile(PLAYER_2) then
-			local p2pane = SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("ScreenEval Common"):GetChild("Panes")
 			if PROFILEMAN:IsPersistentProfile(PLAYER_1) then
-				p2pane:GetChild("Pane" .. SL["P2"].EvalPanePrimary .. "_SideP2"):visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1)
+				RestorePaneAndHideQR(2, SL["P2"].EvalPanePrimary)
 			else
-				p2pane:GetChild("Pane" .. SL["P2"].EvalPaneSecondary .. "_SideP2"):visible(false):diffusealpha(0):sleep(0.2):visible(true):diffusealpha(1)
+				RestorePaneAndHideQR(2, SL["P2"].EvalPaneSecondary)
 			end
-			p2pane:GetChild("Pane7_SideP2"):visible(true):sleep(0.2):diffusealpha(0)
 			self:sleep(0.1):queuecommand("SS")
 		end
 	end,

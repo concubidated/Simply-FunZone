@@ -68,6 +68,30 @@ local TableContainsData = function(t)
 	return false
 end
 
+local NormalizeItlData = function(data)
+	if type(data) ~= "table" then data = {} end
+
+	if type(data["pathMap"]) ~= "table" then data["pathMap"] = {} end
+	if type(data["hashMap"]) ~= "table" then data["hashMap"] = {} end
+	if type(data["points"]) ~= "table" then data["points"] = {} end
+	if type(data["pointsSingle"]) ~= "table" then data["pointsSingle"] = {} end
+	if type(data["pointsDouble"]) ~= "table" then data["pointsDouble"] = {} end
+
+	for hash, entry in pairs(data["hashMap"]) do
+		if type(entry) ~= "table" then
+			data["hashMap"][hash] = nil
+		else
+			entry["ex"] = tonumber(entry["ex"]) or 0
+			entry["clearType"] = tonumber(entry["clearType"]) or 1
+			entry["points"] = tonumber(entry["points"]) or 0
+			entry["maxPoints"] = tonumber(entry["maxPoints"]) or 0
+			if type(entry["judgments"]) ~= "table" then entry["judgments"] = {} end
+		end
+	end
+
+	return data
+end
+
 -- Takes the ITLData loaded in memory and writes it to the local profile.
 WriteItlFile = function(player)
 	local pn = ToEnumShortString(player)
@@ -159,8 +183,14 @@ ReadItlFile = function(player)
 			f:Close()
 		end
 		f:destroy()
-		itlData = JsonDecode(existing)
+		if existing ~= "" then
+			local ok, decoded = pcall(JsonDecode, existing)
+			if ok and type(decoded) == "table" then
+				itlData = decoded
+			end
+		end
 	end
+	itlData = NormalizeItlData(itlData)
 	-- SL 5.2.0 had a bug where the EX scores weren't calculated correctly.
 	-- If that's the case, then recalculate the scores the first time the v5.2.1 theme
 	-- is loaded. Use this variable called "fixedEx" to determine if the EX scores
@@ -194,38 +224,40 @@ ReadItlFile = function(player)
 
 		if hashMap ~= nil then
 			for hash, data in pairs(hashMap) do
-				local counts = data["judgments"]
+				local counts = type(data) == "table" and data["judgments"] or nil
 				if counts ~= nil and counts["W0"] ~= nil then
-					local totalSteps = counts["totalSteps"]
-					local totalHolds = counts["totalHolds"]
-					local totalRolls = counts["totalRolls"]
+					local totalSteps = tonumber(counts["totalSteps"]) or 0
+					local totalHolds = tonumber(counts["totalHolds"]) or 0
+					local totalRolls = tonumber(counts["totalRolls"]) or 0
 
 					local total_possible = totalSteps * SL.ExWeights["W0"] + (totalHolds + totalRolls) * SL.ExWeights["Held"]
 					local total_points = 0
 
-					for key in ivalues(keys) do
-						local value = counts[key]
-						if key == "W0" or key == "W1" then
-							key15ms = key .. "15"
-							if counts[key15ms] ~= nil then value = counts[key15ms] end
+					if total_possible > 0 then
+						for key in ivalues(keys) do
+							local value = tonumber(counts[key])
+							if key == "W0" or key == "W1" then
+								local key15ms = key .. "15"
+								if counts[key15ms] ~= nil then value = tonumber(counts[key15ms]) end
+							end
+							if value ~= nil then
+								total_points = total_points + value * SL.ExWeights[key]
+							end
 						end
-						if value ~= nil then		
-							total_points = total_points + value * SL.ExWeights[key]
+
+						local held = (tonumber(counts["Holds"]) or 0) + (tonumber(counts["Rolls"]) or 0)
+						total_points = total_points + held * SL.ExWeights["Held"]
+
+						local letGo = (totalHolds - (tonumber(counts["Holds"]) or 0)) + (totalRolls - (tonumber(counts["Rolls"]) or 0))
+						total_points = total_points + letGo * SL.ExWeights["LetGo"]
+
+						local hitMine = tonumber(counts["Mines"]) or 0
+						total_points = total_points + hitMine * SL.ExWeights["HitMine"]
+
+						data["ex"] = math.max(0, math.floor(total_points/total_possible * 10000))
+						if data["maxPoints"] ~= nil and data["maxPoints"] > 0 then
+							data["points"] = GetPointsForSong(data["maxPoints"], data["ex"]/100)
 						end
-					end
-
-					local held = counts["Holds"] + counts["Rolls"]
-					total_points = total_points + held * SL.ExWeights["Held"]
-
-					local letGo = (totalHolds - counts["Holds"]) + (totalRolls - counts["Rolls"])
-					total_points = total_points + letGo * SL.ExWeights["LetGo"]
-
-					local hitMine = counts["Mines"]
-					total_points = total_points + hitMine * SL.ExWeights["HitMine"]
-
-					data["ex"] = math.max(0, math.floor(total_points/total_possible * 10000))
-					if data["maxPoints"] ~= nil and data["maxPoints"] > 0 then
-						data["points"] = GetPointsForSong(data["maxPoints"], data["ex"]/100)					
 					end
 				end
 			end
@@ -446,7 +478,7 @@ CalculateITLStats = function(player)
     local pn = ToEnumShortString(player)
     
     -- Grab data from memory
-    itlData = SL[pn].ITLData
+    local itlData = NormalizeItlData(SL[pn].ITLData)
 	local points = itlData["points"]
     local tp = 0
     local rp = 0
@@ -468,7 +500,7 @@ CalculateITLSongRanks = function(player)
 	local pn = ToEnumShortString(player)
 	
 	-- Grab data from memory
-	itlData = SL[pn].ITLData
+	local itlData = NormalizeItlData(SL[pn].ITLData)
 	local songHashes = itlData["hashMap"]
 
 	--TODO: delete this once it's confirmed working

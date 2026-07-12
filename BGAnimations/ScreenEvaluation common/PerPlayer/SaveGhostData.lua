@@ -43,7 +43,7 @@ WriteGhostData = function(player, songHash)
 	if FILEMAN:DoesFileExist(path) then
 		if f:Open(path, 1) then		
 			local old = f:Read()
-			old = JsonDecode(old)
+			old = SL.SafeJsonDecode(old)
 			oldITG = old["itg"][#old["itg"]]
 			oldEX = old["ex"][#old["ex"]]			
 			if oldITG >= currITG then 

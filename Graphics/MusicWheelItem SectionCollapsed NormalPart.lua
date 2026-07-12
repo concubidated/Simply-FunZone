@@ -34,10 +34,15 @@ if ThemePrefs.Get("SongSelectBG") ~= "Off" then
 			self:diffusealpha(0.1):fadeleft(0.1):SetDecodeMovie(false)
 		end,
 		SetCommand=function(self, params)
-			group = params.Text
+			local group = params.Text
 			if group then
-				self:LoadFromSongGroup(group):visible(true)
+				if self.LastSongGroup ~= group then
+					self:LoadFromSongGroup(group)
+					self.LastSongGroup = group
+				end
+				self:visible(true)
 			else
+				self.LastSongGroup = nil
 				self:visible(false)
 			end
 		end,

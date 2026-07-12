@@ -36,6 +36,10 @@ local af = Def.ActorFrame{
 		ApplyMods(params.Player)
 	end,
 
+	PreviousSongMessageCommand=function(self) SL.SelectMusicTelemetry:Pulse("normal.prev") end,
+	NextSongMessageCommand=function(self) SL.SelectMusicTelemetry:Pulse("normal.next") end,
+	CurrentSongChangedMessageCommand=function(self) SL.SelectMusicTelemetry:Pulse("normal.song") end,
+
 	-- ---------------------------------------------------
 	--  first, load files that contain no visual elements, just code that needs to run
 

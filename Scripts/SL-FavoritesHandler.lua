@@ -15,14 +15,16 @@ end
 addOrRemoveFavorite = function(player)
     local profileName = PROFILEMAN:GetPlayerName(player) == "" and ToEnumShortString(player) or PROFILEMAN:GetPlayerName(player)
     local path = getFavoritesPath(player)
+    local song = GAMESTATE:GetCurrentSong()
 
     -- Only attempt to add/remove a favorite if over a valid song
-    if GAMESTATE:GetCurrentSong() then
-        local songDir = GAMESTATE:GetCurrentSong():GetSongDir()
+    if song then
+        local songDir = song:GetSongDir()
 
-        local songTitle = GAMESTATE:GetCurrentSong():GetDisplayFullTitle()
+        local songTitle = song:GetDisplayFullTitle()
         local arr = split("/", songDir)
-        songDir = arr[3] .. "/" .. arr[4]
+        local favoritePath = arr[3] .. "/" .. arr[4]
+        local favoritePathPattern = strPlainText(favoritePath)
         local favoritesString = lua.ReadFile(path) or ""
 
         if not PROFILEMAN:IsPersistentProfile(player) then
@@ -30,22 +32,24 @@ addOrRemoveFavorite = function(player)
 
         elseif favoritesString then
             -- If song found in the player's favorites
-            local checksong = string.match(favoritesString, strPlainText(arr[3] .. "/" .. arr[4]))
+            local checksong = string.match(favoritesString, favoritePathPattern)
 
             -- Song found
             if checksong then
-                favoritesString = string.gsub(favoritesString, strPlainText(arr[3] .. "/" .. arr[4]) .. "\n", "")
+                favoritesString = string.gsub(favoritesString, favoritePathPattern .. "\n", "")
                 -- We need to now remove the song from the global list of favorites to remove
                 -- any indicators in the music wheel.
                 -- Add some error handling *just in case* the song doesn't technically exist for some reason
-                if SONGMAN:FindSong(songDir) then
-                    local song = SONGMAN:FindSong(songDir)
-                    local foundIndex = FindInTable(song, SL[ToEnumShortString(player)].Favorites)
-                    table.remove(SL[ToEnumShortString(player)].Favorites, foundIndex)
+                local favoriteSong = SONGMAN:FindSong(favoritePath)
+                if favoriteSong then
+                    local foundIndex = FindInTable(favoriteSong, SL[ToEnumShortString(player)].Favorites)
+                    if foundIndex then
+                        table.remove(SL[ToEnumShortString(player)].Favorites, foundIndex)
+                    end
                 end
                 SCREENMAN:SystemMessage( songTitle .. " removed from " .. profileName .. "'s Favorites.")
             else
-                favoritesString = favoritesString .. arr[3] .. "/" .. arr[4] .. "\n";
+                favoritesString = favoritesString .. favoritePath .. "\n";
 
                 SCREENMAN:SystemMessage(songTitle .. " added to " .. profileName .. "'s Favorites.")
             end
@@ -112,11 +116,12 @@ generateFavoritesForMusicWheel = function()
                                 Songs = {}
                             }
                         else
+                            local song = SONGMAN:FindSong(line)
                             listofavorites[#listofavorites].Songs[#listofavorites[#listofavorites].Songs + 1] = {
                                 Path = line,
-                                Title = SONGMAN:FindSong(line) and SONGMAN:FindSong(line):GetDisplayMainTitle() or nil
+                                Title = song and song:GetDisplayMainTitle() or nil
                             }
-                            SL[ToEnumShortString(pn)].Favorites[#SL[ToEnumShortString(pn)].Favorites + 1] = SONGMAN:FindSong(line)
+                            SL[ToEnumShortString(pn)].Favorites[#SL[ToEnumShortString(pn)].Favorites + 1] = song
                         end
                     end
 

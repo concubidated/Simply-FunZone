@@ -6,6 +6,9 @@ local pn = ToEnumShortString(player)
 
 local currentFolder = ""
 local currentDifficulty = ""	
+local currentProfileName = ""
+local currentStepstype = ""
+local stable_delay = 0.12
 
 local af = Def.ActorFrame{
 	InitCommand=function(self)
@@ -26,9 +29,16 @@ local af = Def.ActorFrame{
 		end
 	end,
 	CurrentSongChangedMessageCommand=function(self)
-		self:queuecommand("BuildSongLampArray")
+		self:playcommand("QueueBuildSongLampArray")
 	end,
 	["CurrentSteps"..pn.."ChangedMessageCommand"]=function(self)
+		self:playcommand("QueueBuildSongLampArray")
+	end,
+	PreviousSongMessageCommand=function(self) self:stoptweening() end,
+	NextSongMessageCommand=function(self) self:stoptweening() end,
+	QueueBuildSongLampArrayCommand=function(self)
+		self:stoptweening()
+		self:sleep(stable_delay)
 		self:queuecommand("BuildSongLampArray")
 	end,
 	PlayerJoinedMessageCommand=function(self, params)
@@ -53,7 +63,7 @@ local columnWidth = 80
 -- assign the "Grade_Failed" key a value equal to num_tiers
 grades["Grade_Failed"] = num_tiers
 
-difficultyNames = {
+local difficultyNames = {
 	Difficulty_Beginner = "Beginner",
 	Difficulty_Easy = "Easy",
 	Difficulty_Medium = "Medium",
@@ -63,7 +73,7 @@ difficultyNames = {
 
 }
 
-af2 = Def.ActorFrame {
+local af2 = Def.ActorFrame {
 	InitCommand=function(self)
 		if GAMESTATE:GetNumPlayersEnabled() == 2 then
 			self:zoom(0.34)
@@ -97,18 +107,20 @@ af2.BuildSongLampArrayCommand=function(self)
 			if steps then
 				local difficulty = steps:GetDifficulty()
 				-- Get profile and current difficulty
-				if folderName ~= currentFolder or difficulty ~= currentDifficulty then
+				if folderName ~= currentFolder or difficulty ~= currentDifficulty or profileName ~= currentProfileName or stepstype ~= currentStepstype then
 					currentFolder = folderName
 					currentDifficulty = difficulty
+					currentProfileName = profileName
+					currentStepstype = stepstype
 					for song in ivalues(songs) do
 						local allsteps = song:GetAllSteps()
 						for songsteps in ivalues(allsteps) do
 							local stepsdiff = songsteps:GetDifficulty()
 							if difficulty == stepsdiff and stepstype == songsteps:GetStepsType() then
 								countSongs = countSongs + 1
-								HighScoreList = profile:GetHighScoreListIfExists(song,songsteps)
+								local HighScoreList = profile:GetHighScoreListIfExists(song,songsteps)
 								if HighScoreList ~= nil then 
-									HighScores = HighScoreList:GetHighScores()
+									local HighScores = HighScoreList:GetHighScores()
 									-- Get highest score
 									if #HighScores > 0 then
 										local grade = HighScores[1]:GetGrade()
@@ -137,7 +149,11 @@ af2.BuildSongLampArrayCommand=function(self)
 							end
 						end
 					end
-					columnWidth = 400/bestGrade
+					if bestGrade > 0 then
+						columnWidth = 400/bestGrade
+					else
+						columnWidth = 80
+					end
 					self:playcommand("FolderSummary", {folderName=folderName, profileName=profileName, countSongs=countSongs, scores=scores, difficulty=difficulty, bestGrade=bestGrade })
 				end
 			else

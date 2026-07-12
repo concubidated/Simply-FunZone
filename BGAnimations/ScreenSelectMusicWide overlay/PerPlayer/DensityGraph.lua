@@ -88,17 +88,22 @@ af[#af+1] = Def.ActorFrame{
 	-- going from song -> folder. It will get unhidden after a chart is parsed
 	-- below.
 	CurrentSongChangedMessageCommand=function(self)
+		self:stoptweening()
+		self.PendingSong = nil
+		self.PendingSteps = nil
 		self:queuecommand("Hide")
 	end,
 	["CurrentSteps"..pn.."ChangedMessageCommand"]=function(self)
 		self:queuecommand("Hide")
 		self:stoptweening()
+		self.PendingSong = GAMESTATE:GetCurrentSong()
+		self.PendingSteps = GAMESTATE:GetCurrentSteps(player)
 		self:sleep(ChartPreviewDelay)
 		self:queuecommand("ParseChart")
 	end,
 	ParseChartCommand=function(self)
 		local steps = GAMESTATE:GetCurrentSteps(player)
-		if steps then
+		if steps and steps == self.PendingSteps and GAMESTATE:GetCurrentSong() == self.PendingSong then
 			MESSAGEMAN:Broadcast(pn.."ChartParsing")
 			ParseChartInfo(steps, pn)
 			self:queuecommand("Show")
@@ -106,7 +111,8 @@ af[#af+1] = Def.ActorFrame{
 	end,
 	ShowCommand=function(self)
 		if GAMESTATE:GetCurrentSong() and
-				GAMESTATE:GetCurrentSteps(player) then
+				GAMESTATE:GetCurrentSteps(player) and
+				GAMESTATE:GetCurrentSteps(player) == self.PendingSteps then
 			MESSAGEMAN:Broadcast(pn.."ChartParsed")
 			self:queuecommand("Redraw")
 		else

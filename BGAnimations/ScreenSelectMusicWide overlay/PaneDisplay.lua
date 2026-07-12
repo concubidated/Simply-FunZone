@@ -10,6 +10,8 @@ local footer_height = GAMESTATE:GetNumPlayersEnabled() == 2 and 0 or 32
 local pane_height = GAMESTATE:GetNumPlayersEnabled() == 2 and 59 or 60
 
 local text_zoom = 0.7
+local request_stable_delay = 0.12
+local duplicate_request_seconds = 5
 
 -- -----------------------------------------------------------------------
 -- Convenience function to return the SongOrCourse and StepsOrTrail for a
@@ -25,7 +27,10 @@ local GetScoreFromProfile = function(profile, SongOrCourse, StepsOrTrail)
 	-- if we don't have everything we need, return nil
 	if not (profile and SongOrCourse and StepsOrTrail) then return nil end
 
-	return profile:GetHighScoreList(SongOrCourse, StepsOrTrail):GetHighScores()[1]
+	local high_score_list = profile:GetHighScoreListIfExists(SongOrCourse, StepsOrTrail)
+	if not high_score_list then return nil end
+	local high_scores = high_score_list:GetHighScores()
+	return high_scores[1]
 end
 
 local GetScoreForPlayer = function(player)
@@ -38,22 +43,44 @@ local GetScoreForPlayer = function(player)
 end
 
 -- -----------------------------------------------------------------------
+local GetPaneChild = function(master, player_index, child_name)
+	local paneDisplay = master and master:GetChild("PaneDisplayP"..player_index)
+	return paneDisplay and paneDisplay:GetChild(child_name) or nil
+end
+
+local SetTextActor = function(actor, text, textColor)
+	if not (actor and actor.settext) then return end
+	actor:settext(text)
+	if textColor then actor:diffuse(color(textColor)) end
+end
+
+local QueueActorCommand = function(actor, command)
+	if actor then actor:queuecommand(command) end
+end
+
+local FormatGrooveStatsScore = function(score)
+	local score_value = tonumber(score)
+	if not score_value then return nil, nil end
+	local percent = score_value / 100
+	return string.format("%.2f%%", percent), percent
+end
+
 local SetNameAndScore = function(name, score, nameActor, scoreActor, textColor)
 	if not scoreActor or not nameActor then return end
-	scoreActor:settext(score):diffuse(color(textColor))
-	nameActor:settext(name):diffuse(color(textColor))
+	SetTextActor(scoreActor, score, textColor)
+	SetTextActor(nameActor, name, textColor)
 end
 
 local GetMachineTag = function(gsEntry)
 	if not gsEntry then return end
-	if gsEntry["machineTag"] then
+	if type(gsEntry["machineTag"]) == "string" then
 		-- Make sure we only use up to 4 characters for space concerns.
 		return gsEntry["machineTag"]:sub(1, 4):upper()
 	end
 
 	-- User doesn't have a machineTag set. We'll "make" one based off of
 	-- their name.
-	if gsEntry["name"] then
+	if type(gsEntry["name"]) == "string" then
 		-- 4 Characters is the "intended" length.
 		return gsEntry["name"]:sub(1,4):upper()
 	end
@@ -62,6 +89,8 @@ local GetMachineTag = function(gsEntry)
 end
 
 local GetScoresRequestProcessor = function(res, params)
+	params = params or {}
+	res = res or {}
 	local master = params.master
 	if master == nil then return end
 	-- If we're not hovering over a song when we get the request, then we don't
@@ -69,10 +98,10 @@ local GetScoresRequestProcessor = function(res, params)
 	-- we don't run the RequestResponseActor in CourseMode.
 	if GAMESTATE:GetCurrentSong() == nil then return end
 	
-	local data = res.statusCode == 200 and JsonDecode(res.body) or nil
+	local data = res.statusCode == 200 and SL.SafeJsonDecode(res.body) or nil
 	local requestCacheKey = params.requestCacheKey
 	-- If we have data, and the requestCacheKey is not in the cache, cache it.
-	if data ~= nil and SL.GrooveStats.RequestCache[requestCacheKey] == nil then
+	if type(data) == "table" and requestCacheKey and SL.GrooveStats.RequestCache[requestCacheKey] == nil then
 		SL.GrooveStats.RequestCache[requestCacheKey] = {
 			Response=res,
 			Timestamp=GetTimeSinceStart()
@@ -80,29 +109,29 @@ local GetScoresRequestProcessor = function(res, params)
 	end
 
 	for i=1,2 do
-		local paneDisplay = master:GetChild("PaneDisplayP"..i)
-		local machineScore = paneDisplay:GetChild("MachineHighScore")
-		local machineName = paneDisplay:GetChild("MachineHighScoreName")
+		local machineScore = GetPaneChild(master, i, "MachineHighScore")
+		local machineName = GetPaneChild(master, i, "MachineHighScoreName")
 
-		local playerScore = paneDisplay:GetChild("PlayerHighScore")
-		local playerName = paneDisplay:GetChild("PlayerHighScoreName")
+		local playerScore = GetPaneChild(master, i, "PlayerHighScore")
+		local playerName = GetPaneChild(master, i, "PlayerHighScoreName")
 
-		local loadingText = paneDisplay:GetChild("Loading")
+		local loadingText = GetPaneChild(master, i, "Loading")
 
 		local playerStr = "player"..i
+		local playerData = type(data) == "table" and type(data[playerStr]) == "table" and data[playerStr] or nil
 		local rivalNum = 1
 		local worldRecordSet = false
 		local personalRecordSet = false
 		local foundLeaderboard = false
 
 		-- First check to see if the leaderboard even exists.
-		if data and data[playerStr] then
-			local showExScore = SL["P"..i].ActiveModifiers.ShowEXScore and data[playerStr]["exLeaderboard"] ~= nil
+		if playerData then
+			local showExScore = SL["P"..i].ActiveModifiers.ShowEXScore and type(playerData["exLeaderboard"]) == "table"
 			local leaderboardData = nil
 			if showExScore then
-				leaderboardData = data[playerStr]["exLeaderboard"]
-			elseif data[playerStr]["gsLeaderboard"] then
-				leaderboardData = data[playerStr]["gsLeaderboard"]
+				leaderboardData = playerData["exLeaderboard"]
+			elseif type(playerData["gsLeaderboard"]) == "table" then
+				leaderboardData = playerData["gsLeaderboard"]
 			end
 
 			if leaderboardData then
@@ -111,95 +140,99 @@ local GetScoresRequestProcessor = function(res, params)
 
 			-- And then also ensure that the chart hash matches the currently parsed one.
 			-- It's better to just not display anything than display the wrong scores.
-			if SL["P"..i].Streams.Hash == data[playerStr]["chartHash"] and leaderboardData then
+			if SL["P"..i].Streams.Hash == playerData["chartHash"] and leaderboardData then
 				for gsEntry in ivalues(leaderboardData) do
-					if gsEntry["rank"] == 1 then
-						SetNameAndScore(
-							GetMachineTag(gsEntry),
-							string.format("%.2f%%", gsEntry["score"]/100),
-							machineName,
-							machineScore,
-							"#000000"
-						)
-						worldRecordSet = true
-					end
-
-					if gsEntry["isSelf"] then
-						-- Always display personal EX score from the site if it's available.
-						-- TODO(teejusb): Grab white count from stats and calculate it to compare local score.
-						if showExScore then
+					if type(gsEntry) == "table" then
+						local scoreText, gsScore = FormatGrooveStatsScore(gsEntry["score"])
+						if scoreText and gsEntry["rank"] == 1 then
 							SetNameAndScore(
 								GetMachineTag(gsEntry),
-								string.format("%.2f%%", gsEntry["score"]/100),
-								playerName,
-								playerScore,
+								scoreText,
+								machineName,
+								machineScore,
 								"#000000"
 							)
-							personalRecordSet = true
-						else
-							-- Let's check if the GS high score is higher than the local high score
-							local player = PlayerNumber[i]
-							local localScore = GetScoreForPlayer(player)
-							-- GS's score entry is a value like 9823, so we need to divide it by 100 to get 98.23
-							local gsScore = gsEntry["score"] / 100
+							worldRecordSet = true
+						end
 
-							-- GetPercentDP() returns a value like 0.9823, so we need to multiply it by 100 to get 98.23
-							if not localScore or gsScore >= localScore:GetPercentDP() * 100 then
-								-- It is! Let's use it instead of the local one.
+						if scoreText and gsEntry["isSelf"] then
+							-- Always display personal EX score from the site if it's available.
+							-- TODO(teejusb): Grab white count from stats and calculate it to compare local score.
+							if showExScore then
 								SetNameAndScore(
 									GetMachineTag(gsEntry),
-									string.format("%.2f%%", gsScore),
+									scoreText,
 									playerName,
 									playerScore,
 									"#000000"
 								)
 								personalRecordSet = true
+							else
+								-- Let's check if the GS high score is higher than the local high score
+								local player = PlayerNumber[i]
+								local localScore = GetScoreForPlayer(player)
+
+								-- GetPercentDP() returns a value like 0.9823, so we need to multiply it by 100 to get 98.23
+								if not localScore or gsScore >= localScore:GetPercentDP() * 100 then
+									-- It is! Let's use it instead of the local one.
+									SetNameAndScore(
+										GetMachineTag(gsEntry),
+										scoreText,
+										playerName,
+										playerScore,
+										"#000000"
+									)
+									personalRecordSet = true
+								end
 							end
 						end
-					end
 
-					if gsEntry["isRival"] then
-						local rivalScore = paneDisplay:GetChild("Rival"..rivalNum.."Score")
-						local rivalName = paneDisplay:GetChild("Rival"..rivalNum.."Name")
-						SetNameAndScore(
-							GetMachineTag(gsEntry),
-							string.format("%.2f%%", gsEntry["score"]/100),
-							rivalName,
-							rivalScore,
-							"#000000"
-						)
-						rivalNum = rivalNum + 1
+						if scoreText and gsEntry["isRival"] then
+							if rivalNum <= 3 then
+								SetNameAndScore(
+									GetMachineTag(gsEntry),
+									scoreText,
+									GetPaneChild(master, i, "Rival"..rivalNum.."Name"),
+									GetPaneChild(master, i, "Rival"..rivalNum.."Score"),
+									"#000000"
+								)
+							end
+							rivalNum = rivalNum + 1
+						end
 					end
 				end
 			end
-		elseif data and data[playerStr] and data[playerStr]["itl"] and data[playerStr]["itl"]["itlLeaderboard"] then
+		elseif playerData and type(playerData["itl"]) == "table" and type(playerData["itl"]["itlLeaderboard"]) == "table" then
 			
 			-- And then also ensure that the chart hash matches the currently parsed one.
 			-- It's better to just not display anything than display the wrong scores.
-			if SL["P"..i].Streams.Hash == data[playerStr]["chartHash"] then
-				for gsEntry in ivalues(data[playerStr]["itl"]["itlLeaderboard"]) do
-					if gsEntry["rank"] == 1 then
-						SetNameAndScore(
-							GetMachineTag(gsEntry),
-							string.format("%.2f%%", gsEntry["score"]/100),
-							machineName,
-							machineScore,
-							"#21CCE8"
-						)
-						worldRecordSet = true
-					end
+			if SL["P"..i].Streams.Hash == playerData["chartHash"] then
+				for gsEntry in ivalues(playerData["itl"]["itlLeaderboard"]) do
+					if type(gsEntry) == "table" then
+						local scoreText = FormatGrooveStatsScore(gsEntry["score"])
+						if scoreText and gsEntry["rank"] == 1 then
+							SetNameAndScore(
+								GetMachineTag(gsEntry),
+								scoreText,
+								machineName,
+								machineScore,
+								"#21CCE8"
+							)
+							worldRecordSet = true
+						end
 
-					if gsEntry["isRival"] then
-						local rivalScore = paneDisplay:GetChild("Rival"..rivalNum.."Score")
-						local rivalName = paneDisplay:GetChild("Rival"..rivalNum.."Name")
-						SetNameAndScore(
-							GetMachineTag(gsEntry),
-							string.format("%.2f%%", gsEntry["score"]/100),
-							rivalName,
-							rivalScore,
-							"#21CCE8"
-						)
-						rivalNum = rivalNum + 1
+						if scoreText and gsEntry["isRival"] then
+							if rivalNum <= 3 then
+								SetNameAndScore(
+									GetMachineTag(gsEntry),
+									scoreText,
+									GetPaneChild(master, i, "Rival"..rivalNum.."Name"),
+									GetPaneChild(master, i, "Rival"..rivalNum.."Score"),
+									"#21CCE8"
+								)
+							end
+							rivalNum = rivalNum + 1
+						end
 					end
 				end
 			end
@@ -208,36 +241,34 @@ local GetScoresRequestProcessor = function(res, params)
 		-- Fall back to to using the machine profile's record if we never set the world record.
 		-- This chart may not have been ranked, or there is no WR, or the request failed.
 		if not worldRecordSet then
-			machineName:queuecommand("SetDefault")
-			machineScore:queuecommand("SetDefault")
+			QueueActorCommand(machineName, "SetDefault")
+			QueueActorCommand(machineScore, "SetDefault")
 		end
 
 		-- Fall back to to using the personal profile's record if we never set the record.
 		-- This chart may not have been ranked, or we don't have a score for it, or the request failed.
 		if not personalRecordSet then
-			playerName:queuecommand("SetDefault")
-			playerScore:queuecommand("SetDefault")
+			QueueActorCommand(playerName, "SetDefault")
+			QueueActorCommand(playerScore, "SetDefault")
 		end
 
 		-- Iterate over any remaining rivals and hide them.
 		-- This also handles the failure case as rivalNum will never have been incremented.
 		for j=rivalNum,3 do
-			local rivalScore = paneDisplay:GetChild("Rival"..j.."Score")
-			local rivalName = paneDisplay:GetChild("Rival"..j.."Name")
-			rivalScore:settext("??.??%")
-			rivalName:settext("----")
+			SetTextActor(GetPaneChild(master, i, "Rival"..j.."Score"), "??.??%")
+			SetTextActor(GetPaneChild(master, i, "Rival"..j.."Name"), "----")
 		end
 
 		if res.error or res.statusCode ~= 200 then
 			local error = res.error and ToEnumShortString(res.error) or nil
 			if error == "Timeout" then
-				loadingText:settext("Timed Out")
-			elseif error or (res.statusCode ~= nil and res.statusCode ~= 200) then
-				loadingText:settext("Failed")
+				SetTextActor(loadingText, "Timed Out")
+			elseif error or res.statusCode ~= 200 then
+				SetTextActor(loadingText, "Failed")
 			end
 		else
-			if data and data[playerStr] then
-				local headers = res.headers
+			if playerData then
+				local headers = res.headers or {}
 				local boogie = false
 				local boogie_ex = false
 				if headers["bs-leaderboard-player-" .. i] == "BS" then
@@ -248,28 +279,28 @@ local GetScoresRequestProcessor = function(res, params)
 				
 				if foundLeaderboard then
 					if boogie then
-						loadingText:settext("BoogieStats")
+						SetTextActor(loadingText, "BoogieStats")
 					elseif boogie_ex then
-						loadingText:settext("Boogie EX")
+						SetTextActor(loadingText, "Boogie EX")
 					elseif SL["P"..i].ActiveModifiers.ShowEXScore then
-						loadingText:settext("EX Score")
+						SetTextActor(loadingText, "EX Score")
 					else
-						loadingText:settext("GrooveStats")
+						SetTextActor(loadingText, "GrooveStats")
 					end
 				else
 					if boogie then
-						loadingText:settext("No Boogie Data")
+						SetTextActor(loadingText, "No Boogie Data")
 					elseif boogie_ex then
-						loadingText:settext("No Boogie EX")
+						SetTextActor(loadingText, "No Boogie EX")
 					elseif SL["P"..i].ActiveModifiers.ShowEXScore then
-						loadingText:settext("No EX Data")
+						SetTextActor(loadingText, "No EX Data")
 					else
-						loadingText:settext("No Data")
+						SetTextActor(loadingText, "No Data")
 					end
 				end
 			else
 				-- Just hide the text
-				loadingText:queuecommand("Set")
+				QueueActorCommand(loadingText, "Set")
 			end
 		end
 	end
@@ -313,29 +344,36 @@ af[#af+1] = RequestResponseActor(17, 50)..{
 	OnCommand=function(self)
 		-- Create variables for both players, even if they're not currently active.
 		self.IsParsing = {false, false}
+		self.LastRequestCacheKey = ""
+		self.LastRequestTime = 0
 	end,
 	-- Broadcasted from ./PerPlayer/DensityGraph.lua
 	P1ChartParsingMessageCommand=function(self)	self.IsParsing[1] = true end,
 	P2ChartParsingMessageCommand=function(self)	self.IsParsing[2] = true end,
 	P1ChartParsedMessageCommand=function(self)
 		self.IsParsing[1] = false
+		self:stoptweening()
+		self:sleep(request_stable_delay)
 		self:queuecommand("ChartParsed")
 	end,
 	P2ChartParsedMessageCommand=function(self)
 		self.IsParsing[2] = false
+		self:stoptweening()
+		self:sleep(request_stable_delay)
 		self:queuecommand("ChartParsed")
 	end,
 	ChartParsedCommand=function(self)
 		local master = self:GetParent()
+		if not master then return end
 
 		if not IsServiceAllowed(SL.GrooveStats.GetScores) then
 			if SL.GrooveStats.IsConnected then
 				-- loadingText is made visible when requests complete.
 				-- If we disable the service from a previous request, surface it to the user here.
 				for i=1,2 do
-					local loadingText = master:GetChild("PaneDisplayP"..i):GetChild("Loading")
-					loadingText:settext("Disabled")
-					loadingText:visible(true)
+					local loadingText = GetPaneChild(master, i, "Loading")
+					SetTextActor(loadingText, "Disabled")
+					if loadingText then loadingText:visible(true) end
 				end
 			end
 			return
@@ -363,9 +401,11 @@ af[#af+1] = RequestResponseActor(17, 50)..{
 					query["chartHashP"..i] = SL[pn].Streams.Hash
 					headers["x-api-key-player-"..i] = SL[pn].ApiKey
 					requestCacheKey = requestCacheKey .. SL[pn].Streams.Hash .. SL[pn].ApiKey .. pn
-					local loadingText = master:GetChild("PaneDisplayP"..i):GetChild("Loading")
-					loadingText:visible(true)
-					loadingText:settext("Loading ..."):diffuse(Color.Black)
+					local loadingText = GetPaneChild(master, i, "Loading")
+					if loadingText and loadingText.settext then
+						loadingText:visible(true)
+						loadingText:settext("Loading ..."):diffuse(Color.Black)
+					end
 					sendRequest = true
 				end
 			end
@@ -374,14 +414,22 @@ af[#af+1] = RequestResponseActor(17, 50)..{
 		-- Only send the request if it's applicable.
 		if sendRequest then
 			requestCacheKey = CRYPTMAN:SHA256String(requestCacheKey.."-player-scores")
+			local now = GetTimeSinceStart()
+			if requestCacheKey == self.LastRequestCacheKey and now - self.LastRequestTime < duplicate_request_seconds then
+				return
+			end
+			self.LastRequestCacheKey = requestCacheKey
+			self.LastRequestTime = now
 			local params = {requestCacheKey=requestCacheKey, master=master}
 			RemoveStaleCachedRequests()
 			-- If the data is still in the cache, run the request processor directly
 			-- without making a request with the cached response.
 			if SL.GrooveStats.RequestCache[requestCacheKey] ~= nil then
+				SL.SelectMusicTelemetry:Pulse("wide.pane.gs.cache")
 				local res = SL.GrooveStats.RequestCache[requestCacheKey].Response
 				GetScoresRequestProcessor(res, params)
 			else
+				SL.SelectMusicTelemetry:Pulse("wide.pane.gs.request")
 				self:playcommand("MakeGrooveStatsRequest", {
 					endpoint="player-scores.php?"..NETWORK:EncodeQueryParameters(query),
 					method="GET",
@@ -438,12 +486,12 @@ for player in ivalues(PlayerNumber) do
 
 	af2.HideCommand=function(self) self:visible(false) end
 
-	af2.OnCommand=function(self)                                    self:playcommand("Set") end
-	af2.SLGameModeChangedMessageCommand=function(self)              self:playcommand("Set") end
-	af2.CurrentCourseChangedMessageCommand=function(self)			self:playcommand("Set") end
-	af2.CurrentSongChangedMessageCommand=function(self)				self:playcommand("Set") end
-	af2["CurrentSteps"..pn.."ChangedMessageCommand"]=function(self) self:playcommand("Set") end
-	af2["CurrentTrail"..pn.."ChangedMessageCommand"]=function(self) self:playcommand("Set") end
+	af2.OnCommand=function(self)                                    SL.SelectMusicTelemetry:Pulse("wide.pane."..pn..".on"); self:playcommand("Set") end
+	af2.SLGameModeChangedMessageCommand=function(self)              SL.SelectMusicTelemetry:Pulse("wide.pane."..pn..".mode"); self:playcommand("Set") end
+	af2.CurrentCourseChangedMessageCommand=function(self)			SL.SelectMusicTelemetry:Pulse("wide.pane."..pn..".course"); self:playcommand("Set") end
+	af2.CurrentSongChangedMessageCommand=function(self)				SL.SelectMusicTelemetry:Pulse("wide.pane."..pn..".song"); self:playcommand("Set") end
+	af2["CurrentSteps"..pn.."ChangedMessageCommand"]=function(self) SL.SelectMusicTelemetry:Pulse("wide.pane."..pn..".steps"); self:playcommand("Set") end
+	af2["CurrentTrail"..pn.."ChangedMessageCommand"]=function(self) SL.SelectMusicTelemetry:Pulse("wide.pane."..pn..".trail"); self:playcommand("Set") end
 
 	-- -----------------------------------------------------------------------
 	-- colored background Quad

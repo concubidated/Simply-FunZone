@@ -189,8 +189,13 @@ LoadProfileCustom = function(profile, dir)
 	end
 
 	if pn and FILEMAN:DoesFileExist(path) then
-		filecontents = IniFile.ReadFile(path)[theme_name]
+		local prefs = IniFile.ReadFile(path)
+		if type(prefs) == "table" and type(prefs[theme_name]) == "table" then
+			filecontents = prefs[theme_name]
+		end
+	end
 
+	if filecontents then
 		-- for each key/value pair read in from the player's profile
 		for k,v in pairs(filecontents) do
 			-- ensure that the key has a corresponding key in permitted_profile_settings

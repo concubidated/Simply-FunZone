@@ -129,12 +129,12 @@ local LeaderboardRequestProcessor = function(res, master)
 	end
 
 	local playerStr = "player"..n
-	local data = JsonDecode(res.body)
+	local data = SL.SafeJsonDecode(res.body)
 
 	-- BoogieStats integration
 	-- Find out whether this chart is ranked on GrooveStats. 
 	-- If it is unranked, alter groovestats logo and the box border color to the BoogieStats theme
-	local headers = res.headers
+	local headers = res.headers or {}
 	local boogie = false
 	local boogie_ex = false
 	if headers["bs-leaderboard-player-" .. n] == "BS" then

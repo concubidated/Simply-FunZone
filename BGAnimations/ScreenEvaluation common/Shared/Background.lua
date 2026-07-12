@@ -8,10 +8,11 @@ if SongOrCourse and SongOrCourse:HasBackground() then
 		Name="Background",
 		InitCommand=function(self)
 			local Path = nil
+			local SongOrCourse = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong()
 			if GAMESTATE:IsCourseMode() then
-				Path = GAMESTATE:GetCurrentCourse():GetBackgroundPath()
+				Path = SongOrCourse and SongOrCourse:GetBackgroundPath()
 			else                                   
-				Path = GAMESTATE:GetCurrentSong():GetBackgroundPath()
+				Path = SongOrCourse and SongOrCourse:GetBackgroundPath()
 			end
 			if Path then
 				self:Load( Path ):visible(true):horizalign(0):vertalign(0):diffusealpha(0.3):SetHeight(_screen.cy*2-32):SetWidth(_screen.cx*2):blend("BlendMode_Add")

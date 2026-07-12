@@ -1,13 +1,50 @@
 local NumEntries = 13
 local RowHeight = 24
 
+local GetChild = function(actor, child_name)
+	return actor and actor:GetChild(child_name) or nil
+end
+
+local SetActorText = function(actor, text)
+	if actor then actor:settext(text or "") end
+end
+
+local SetActorVisible = function(actor, visible)
+	if actor then actor:visible(visible) end
+end
+
+local FormatLeaderboardScore = function(score)
+	local score_value = tonumber(score)
+	if not score_value then return "" end
+	return string.format("%.2f%%", score_value/100)
+end
+
+local GetLeaderboardMaster = function()
+	local top_screen = SCREENMAN:GetTopScreen()
+	if not top_screen then return nil end
+	local overlay = top_screen:GetChild("Overlay")
+	return overlay and overlay:GetChild("LeaderboardMaster") or nil
+end
+
 local SetEntryText = function(rank, name, score, date, actor)
 	if actor == nil then return end
 
-	actor:GetChild("Rank"):settext(rank)
-	actor:GetChild("Name"):settext(name)
-	actor:GetChild("Score"):settext(score)
-	actor:GetChild("Date"):settext(date)
+	SetActorText(GetChild(actor, "Rank"), rank)
+	SetActorText(GetChild(actor, "Name"), name)
+	SetActorText(GetChild(actor, "Score"), score)
+	SetActorText(GetChild(actor, "Date"), date)
+end
+
+local SetLeaderboardRows = function(leaderboard, first_row_text)
+	if not leaderboard then return end
+	for j=1, NumEntries do
+		local entry = leaderboard:GetChild("LeaderboardEntry"..j)
+		if j == 1 then
+			SetEntryText("", first_row_text, "", "", entry)
+		else
+			SetEntryText("", "", "", "", entry)
+		end
+	end
 end
 
 local SetLeaderboardForPlayer = function(player_num, leaderboard, leaderboardData, isRanked)
@@ -19,58 +56,72 @@ local SetLeaderboardForPlayer = function(player_num, leaderboard, leaderboardDat
 	-- Hide the rival and self highlights.
 	-- They will be unhidden and repositioned as needed below.
 	for i=1,3 do
-		leaderboard:GetChild("Rival"..i):visible(false)
+		SetActorVisible(GetChild(leaderboard, "Rival"..i), false)
 	end
-	leaderboard:GetChild("Self"):visible(false)
+	SetActorVisible(GetChild(leaderboard, "Self"), false)
 
 	-- Hide/Unhide EX score display
-	leaderboard:GetChild("EX"):visible(leaderboardData["IsEX"])
+	SetActorVisible(GetChild(leaderboard, "EX"), leaderboardData["IsEX"])
 
 	if leaderboardData then
-		if leaderboardData["Name"] then
+		if type(leaderboardData["Name"]) == "string" then
 			local name = leaderboardData["Name"]:gsub("ITL Online", "ITL")
-			leaderboard:GetChild("Header"):settext(name)
+			SetActorText(GetChild(leaderboard, "Header"), name)
+		elseif leaderboardData["Name"] then
+			SetActorText(GetChild(leaderboard, "Header"), tostring(leaderboardData["Name"]))
 		end
 
-		if leaderboardData["Data"] then
+		if type(leaderboardData["Data"]) == "table" then
 			for gsEntry in ivalues(leaderboardData["Data"]) do
+				if type(gsEntry) ~= "table" then gsEntry = {} end
 				local entry = leaderboard:GetChild("LeaderboardEntry"..entryNum)
 				SetEntryText(
-					gsEntry["rank"]..".",
-					gsEntry["name"],
-					string.format("%.2f%%", gsEntry["score"]/100),
-					ParseGroovestatsDate(gsEntry["date"]),
+					tostring(gsEntry["rank"] or "")..".",
+					gsEntry["name"] or "",
+					FormatLeaderboardScore(gsEntry["score"]),
+					gsEntry["date"] and ParseGroovestatsDate(gsEntry["date"]) or "",
 					entry
 				)
-				if gsEntry["isRival"] then
+				if entry and gsEntry["isRival"] then
 					if gsEntry["isFail"] then
-						entry:GetChild("Rank"):diffuse(Color.Black)
-						entry:GetChild("Name"):diffuse(Color.Black)
-						entry:GetChild("Score"):diffuse(Color.Red)
-						entry:GetChild("Date"):diffuse(Color.Black)
+						local rank = entry:GetChild("Rank")
+						local name = entry:GetChild("Name")
+						local score = entry:GetChild("Score")
+						local date = entry:GetChild("Date")
+						if rank then rank:diffuse(Color.Black) end
+						if name then name:diffuse(Color.Black) end
+						if score then score:diffuse(Color.Red) end
+						if date then date:diffuse(Color.Black) end
 					else
 						entry:diffuse(Color.Black)
 					end
-					leaderboard:GetChild("Rival"..rivalNum):y(entry:GetY()):visible(true)
+					local rival = leaderboard:GetChild("Rival"..rivalNum)
+					if rival then rival:y(entry:GetY()):visible(true) end
 					rivalNum = rivalNum + 1
-				elseif gsEntry["isSelf"] then
+				elseif entry and gsEntry["isSelf"] then
 					if gsEntry["isFail"] then
-						entry:GetChild("Rank"):diffuse(Color.Black)
-						entry:GetChild("Name"):diffuse(Color.Black)
-						entry:GetChild("Score"):diffuse(Color.Red)
-						entry:GetChild("Date"):diffuse(Color.Black)
+						local rank = entry:GetChild("Rank")
+						local name = entry:GetChild("Name")
+						local score = entry:GetChild("Score")
+						local date = entry:GetChild("Date")
+						if rank then rank:diffuse(Color.Black) end
+						if name then name:diffuse(Color.Black) end
+						if score then score:diffuse(Color.Red) end
+						if date then date:diffuse(Color.Black) end
 					else
 						entry:diffuse(Color.Black)
 					end
-					leaderboard:GetChild("Self"):y(entry:GetY()):visible(true)
-				else
+					local self_highlight = leaderboard:GetChild("Self")
+					if self_highlight then self_highlight:y(entry:GetY()):visible(true) end
+				elseif entry then
 					entry:diffuse(Color.White)
 				end
 
 				-- Why does this work for normal entries but not for Rivals/Self where
 				-- I have to explicitly set the colors for each child??
-				if gsEntry["isFail"] then
-					entry:GetChild("Score"):diffuse(Color.Red)
+				if entry and gsEntry["isFail"] then
+					local score = entry:GetChild("Score")
+					if score then score:diffuse(Color.Red) end
 				end
 				entryNum = entryNum + 1
 			end
@@ -106,40 +157,42 @@ local LeaderboardRequestProcessor = function(res, master)
 		for i=1, 2 do
 			local pn = "P"..i
 			local leaderboard = master:GetChild(pn.."Leaderboard")
-			for j=1, NumEntries do
-				local entry = leaderboard:GetChild("LeaderboardEntry"..j)
-				if j == 1 then
-					SetEntryText("", text, "", "", entry)
-				else
-					-- Empty out the remaining rows.
-					SetEntryText("", "", "", "", entry)
-				end
-			end
+			SetLeaderboardRows(leaderboard, text)
 		end
 		return
 	end
 
-	local data = JsonDecode(res.body)
+	local data = SL.SafeJsonDecode(res.body)
+	if not data then
+		for i=1, 2 do
+			local pn = "P"..i
+			local leaderboard = master:GetChild(pn.."Leaderboard")
+			SetLeaderboardRows(leaderboard, "Failed to Load")
+		end
+		return
+	end
 
 	for i=1, 2 do
 		local playerStr = "player"..i
 		local pn = "P"..i
 		local leaderboard = master:GetChild(pn.."Leaderboard")
+		if not master[pn] or type(master[pn]["Leaderboards"]) ~= "table" then return end
 		local leaderboardList = master[pn]["Leaderboards"]
+		local headers = res.headers or {}
 		local boogie = false
 		local boogie_ex = false
-		if res.headers["bs-leaderboard-player-" .. i] == "BS" then
+		if headers["bs-leaderboard-player-" .. i] == "BS" then
 			boogie = true
-		elseif res.headers["bs-leaderboard-player-" .. i] == "BS-EX" then
+		elseif headers["bs-leaderboard-player-" .. i] == "BS-EX" then
 			boogie_ex = true
 		end
 
-		if data[playerStr] then
+		if type(data[playerStr]) == "table" then
 			master[pn].isRanked = data[playerStr]["isRanked"]
 
 			-- First add the main leaderboard.
 			if boogie then
-				if data[playerStr]["gsLeaderboard"] then
+				if type(data[playerStr]["gsLeaderboard"]) == "table" then
 					leaderboardList[#leaderboardList + 1] = {
 						Name="BoogieStats",
 						Data=DeepCopy(data[playerStr]["gsLeaderboard"]),
@@ -148,7 +201,7 @@ local LeaderboardRequestProcessor = function(res, master)
 					master[pn]["LeaderboardIndex"] = 1
 				end
 			elseif boogie_ex then
-				if data[playerStr]["gsLeaderboard"] then
+				if type(data[playerStr]["gsLeaderboard"]) == "table" then
 					leaderboardList[#leaderboardList + 1] = {
 						Name="BoogieStats",
 						Data=DeepCopy(data[playerStr]["gsLeaderboard"]),
@@ -158,7 +211,7 @@ local LeaderboardRequestProcessor = function(res, master)
 				end
 			elseif SL["P"..i].ActiveModifiers.ShowEXScore then
 				-- If the player is using EX scoring, then we want to display the EX leaderboard first.
-				if data[playerStr]["exLeaderboard"] then
+				if type(data[playerStr]["exLeaderboard"]) == "table" then
 					leaderboardList[#leaderboardList + 1] = {
 						Name="GrooveStats",
 						Data=DeepCopy(data[playerStr]["exLeaderboard"]),
@@ -167,7 +220,7 @@ local LeaderboardRequestProcessor = function(res, master)
 					master[pn]["LeaderboardIndex"] = 1
 				end
 
-				if data[playerStr]["gsLeaderboard"] then
+				if type(data[playerStr]["gsLeaderboard"]) == "table" then
 					leaderboardList[#leaderboardList + 1] = {
 						Name="GrooveStats",
 						Data=DeepCopy(data[playerStr]["gsLeaderboard"]),
@@ -177,7 +230,7 @@ local LeaderboardRequestProcessor = function(res, master)
 				end
 			else
 				-- Display the main GrooveStats leaderboard first if player is not using EX scoring.
-				if data[playerStr]["gsLeaderboard"] then
+				if type(data[playerStr]["gsLeaderboard"]) == "table" then
 					leaderboardList[#leaderboardList + 1] = {
 						Name="GrooveStats",
 						Data=DeepCopy(data[playerStr]["gsLeaderboard"]),
@@ -186,7 +239,7 @@ local LeaderboardRequestProcessor = function(res, master)
 					master[pn]["LeaderboardIndex"] = 1
 				end
 				
-				if data[playerStr]["exLeaderboard"] then
+				if type(data[playerStr]["exLeaderboard"]) == "table" then
 					leaderboardList[#leaderboardList + 1] = {
 						Name="GrooveStats",
 						Data=DeepCopy(data[playerStr]["exLeaderboard"]),
@@ -199,7 +252,7 @@ local LeaderboardRequestProcessor = function(res, master)
 			-- Then any event leaderboards.
 			local events = {"rpg", "itl"}
 			for event in ivalues(events) do
-				if data[playerStr][event] and data[playerStr][event][event.."Leaderboard"] then
+				if type(data[playerStr][event]) == "table" and type(data[playerStr][event][event.."Leaderboard"]) == "table" then
 					leaderboardList[#leaderboardList + 1] = {
 						Name=data[playerStr][event]["name"],
 						Data=DeepCopy(data[playerStr][event][event.."Leaderboard"]),
@@ -209,11 +262,7 @@ local LeaderboardRequestProcessor = function(res, master)
 				end
 			end
 
-			if #leaderboardList > 1 then
-				leaderboard:GetChild("PaneIcons"):visible(true)
-			else
-				leaderboard:GetChild("PaneIcons"):visible(false)
-			end
+			SetActorVisible(GetChild(leaderboard, "PaneIcons"), #leaderboardList > 1)
 		end
 
 		-- We assume that at least one leaderboard has been added.
@@ -242,8 +291,9 @@ local af = Def.ActorFrame{
 	end,
 	HideLeaderboardCommand=function(self) self:visible(false) end,
 	LeaderboardInputEventMessageCommand=function(self, event)
+		if not event or not event.PlayerNumber then return end
 		local pn = ToEnumShortString(event.PlayerNumber)
-		if #self[pn].Leaderboards == 0 then return end
+		if not self[pn] or type(self[pn].Leaderboards) ~= "table" or #self[pn].Leaderboards == 0 then return end
 
 		if event.type == "InputEventType_FirstPress" then
 			-- We don't use modulus because #Leaderboards might be zero.
@@ -283,18 +333,12 @@ local af = Def.ActorFrame{
 				if SL.GrooveStats.IsConnected then
 					-- If we disable the service from a previous request, surface it to the user here.
 					-- (Even though the Leaderboard option is already removed from the sort menu, so this is extra).
+					local parent = self:GetParent()
+					if not parent then return end
 					for i=1, 2 do
 						local pn = "P"..i
-						local leaderboard = self:GetParent():GetChild(pn.."Leaderboard")
-						for j=1, NumEntries do
-							local entry = leaderboard:GetChild("LeaderboardEntry"..j)
-							if j == 1 then
-								SetEntryText("", "Disabled", "", "", entry)
-							else
-								-- Empty out the remaining rows.
-								SetEntryText("", "", "", "", entry)
-							end
-						end
+						local leaderboard = parent:GetChild(pn.."Leaderboard")
+						SetLeaderboardRows(leaderboard, "Disabled")
 					end
 				end
 				return
@@ -317,13 +361,15 @@ local af = Def.ActorFrame{
 			-- Only send the request if it's applicable.
 			-- Technically this should always be true since otherwise we wouldn't even get to this screen.
 			if sendRequest then
+				local master = GetLeaderboardMaster()
+				if not master then return end
 				self:playcommand("MakeGrooveStatsRequest", {
 					endpoint="player-leaderboards.php?"..NETWORK:EncodeQueryParameters(query),
 					method="GET",
 					headers=headers,
 					timeout=10,
 					callback=LeaderboardRequestProcessor,
-					args=SCREENMAN:GetTopScreen():GetChild("Overlay"):GetChild("LeaderboardMaster"),
+					args=master,
 				})
 			end
 		end

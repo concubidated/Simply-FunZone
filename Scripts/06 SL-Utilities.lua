@@ -254,7 +254,7 @@ function SetPreferredSong()
 		local lastPlayed = false
 		for i,pn in ipairs(GAMESTATE:GetHumanPlayers()) do
 			local prof = PROFILEMAN:GetProfile(pn)
-			song = prof:GetLastPlayedSong()
+			local song = prof:GetLastPlayedSong()
 			if song ~= nil then
 					lastPlayed = true
 					GAMESTATE:SetPreferredSong( song )

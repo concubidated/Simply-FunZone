@@ -245,10 +245,10 @@ return Def.ActorFrame{
 							for i=1,#text_table do
 								local curText = text_table[i]
 								if string.sub(curText, string.len(curText) - 3, string.len(curText)) == " pts" then
-									local max_points = string.sub(curText, 1, string.len(curText) - 4)
-									local exscore = tonumber(SL[pn].itlScore)/100
-									local max_point_multiplier = 0
-									if exscore then
+									local max_points = tonumber(string.sub(curText, 1, string.len(curText) - 4))
+									local itlScore = tonumber(SL[pn].itlScore)
+									if itlScore and max_points and max_points > 0 then
+										local exscore = itlScore / 100
 										local points = GetPointsForSong(max_points, exscore)
 										local pointsPercent = string.format("%.2f%%", points / max_points * 100)
 										curText = points .. "/" .. curText .. " ("..pointsPercent..")"

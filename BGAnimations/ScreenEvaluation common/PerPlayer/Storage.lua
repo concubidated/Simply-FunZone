@@ -53,15 +53,19 @@ return Def.Actor{
 		end
 
 		if GAMESTATE:IsCourseMode() then
-			storage.steps      = GAMESTATE:GetCurrentTrail(player)
-			storage.difficulty = storage.steps:GetDifficulty()
-			storage.meter      = storage.steps:GetMeter()
-			storage.stepartist = GAMESTATE:GetCurrentCourse(player):GetScripter()
+			local trail = GAMESTATE:GetCurrentTrail(player)
+			local course = GAMESTATE:GetCurrentCourse()
+			storage.steps      = trail
+			storage.difficulty = trail and trail:GetDifficulty() or ""
+			storage.meter      = trail and trail:GetMeter() or 0
+			storage.stepartist = course and course:GetScripter() or ""
 		else
-			storage.steps      = GAMESTATE:GetCurrentSteps(player)
-			storage.difficulty = pss:GetPlayedSteps()[1]:GetDifficulty()
-			storage.meter      = pss:GetPlayedSteps()[1]:GetMeter()
-			storage.stepartist = pss:GetPlayedSteps()[1]:GetAuthorCredit()
+			local playedSteps = pss:GetPlayedSteps()
+			local steps = (playedSteps and playedSteps[1]) or GAMESTATE:GetCurrentSteps(player)
+			storage.steps      = steps
+			storage.difficulty = steps and steps:GetDifficulty() or ""
+			storage.meter      = steps and steps:GetMeter() or 0
+			storage.stepartist = steps and steps:GetAuthorCredit() or ""
 		end
 
 		storage.timingwindows = SL[pn].ActiveModifiers.TimingWindows

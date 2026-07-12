@@ -122,7 +122,7 @@ RequestResponseActor = function(x, y)
 						local body = nil
 						local code = response.statusCode
 						if code == 200 then
-							body = JsonDecode(response.body)
+							body = SL.SafeJsonDecode(response.body)
 						end
 						if (code >= 400 and code < 499 and code ~= 429) or (code == 200 and body and body.error and #body.error) then
 							SL.GrooveStats.IsConnected = false
@@ -644,7 +644,7 @@ LoadUnlocksCache = function()
 		local f = RageFileUtil:CreateRageFile()
 		local cache = {}
 		if f:Open(cache_file, 1) then
-			local data = JsonDecode(f:Read())
+			local data = SafeJsonDecode(f:Read())
 			if data ~= nil then
 				cache = data
 			end
@@ -771,7 +771,8 @@ DownloadEventUnlock = function(url, unlockName, packName)
 			end
 
 			if response.statusCode == 200 then
-				if response.headers["Content-Type"] == "application/zip" then
+				local headers = response.headers or {}
+				if headers["Content-Type"] == "application/zip" then
 					-- Downloads are usually of the form:
 					--    /Downloads/<name>.zip/<song_folders/
 					if not FILEMAN:Unzip("/Downloads/"..downloadfile, "/Songs/"..packName.."/") then

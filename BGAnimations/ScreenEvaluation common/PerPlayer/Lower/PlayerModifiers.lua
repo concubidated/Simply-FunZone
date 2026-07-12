@@ -7,8 +7,10 @@ local font_zoom = 0.7
 local width = THEME:GetMetric("GraphDisplay", "BodyWidth")
 
 local optionslist = GetPlayerOptionsString(player)
+local currentSteps = GAMESTATE:GetCurrentSteps(player)
+local isAutogen = currentSteps and currentSteps:IsAutogen()
 
-local my_peak = GAMESTATE:Env()[pn.."PeakNPS"]
+local my_peak = GAMESTATE:Env()[pn.."PeakNPS"] or 0
 local streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(pn)
 local totalMeasures = streamMeasures + breakMeasures
 local GraphWidth  = THEME:GetMetric("GraphDisplay", "BodyWidth")
@@ -42,7 +44,7 @@ return Def.ActorFrame{
 			if not GAMESTATE:IsCourseMode() then self:queuecommand("Animate") end
 		end,
 		AnimateCommand=function(self)
-			if not GAMESTATE:GetCurrentSteps(pn):IsAutogen() then
+			if not isAutogen then
 				self:sleep(2):linear(0.2):diffusealpha(0)
 			end
 		end,
@@ -50,7 +52,7 @@ return Def.ActorFrame{
 	-- Breakdown
 	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		Text="",
-		Condition=not GAMESTATE:IsCourseMode() and not GAMESTATE:GetCurrentSteps(player):IsAutogen(),
+		Condition=not GAMESTATE:IsCourseMode() and not isAutogen,
 		InitCommand=function(self)
 			if #GAMESTATE:GetHumanPlayers()==1 then
 				self:addx(GraphWidth * 0.2541):maxwidth(GraphWidth+250)
@@ -69,7 +71,7 @@ return Def.ActorFrame{
 	-- Density Info
 	LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		Text="",
-		Condition=not GAMESTATE:IsCourseMode() and not GAMESTATE:GetCurrentSteps(player):IsAutogen(),
+		Condition=not GAMESTATE:IsCourseMode() and not isAutogen,
 		InitCommand=function(self)
 			if #GAMESTATE:GetHumanPlayers()==1 then
 				self:addx(GraphWidth * 0.2541):maxwidth(GraphWidth+250)
@@ -81,7 +83,8 @@ return Def.ActorFrame{
 				self:settext(("%s: %g    "):format(THEME:GetString("ScreenGameplay", "PeakNPS"), round(my_peak * SL.Global.ActiveModifiers.MusicRate,2)) .. ("Peak eBPM: %.0f"):format(round(my_peak * 15 * SL.Global.ActiveModifiers.MusicRate,2)))
 			else
 				self:addy(6):zoom(font_zoom - 0.1)
-				self:settext("Total Stream:  ".. string.format("%d/%d (%0.1f%%)", streamMeasures, totalMeasures, streamMeasures/totalMeasures*100) .. ("    %s: %g    "):format(THEME:GetString("ScreenGameplay", "PeakNPS"), round(my_peak * SL.Global.ActiveModifiers.MusicRate,2)) .. ("Peak eBPM: %.0f"):format(round(my_peak * 15 * SL.Global.ActiveModifiers.MusicRate,2)))
+				local streamPercent = totalMeasures > 0 and streamMeasures/totalMeasures*100 or 0
+				self:settext("Total Stream:  ".. string.format("%d/%d (%0.1f%%)", streamMeasures, totalMeasures, streamPercent) .. ("    %s: %g    "):format(THEME:GetString("ScreenGameplay", "PeakNPS"), round(my_peak * SL.Global.ActiveModifiers.MusicRate,2)) .. ("Peak eBPM: %.0f"):format(round(my_peak * 15 * SL.Global.ActiveModifiers.MusicRate,2)))
 			end
 			self:horizalign(center):diffusealpha(0):sleep(2):linear(0.2):diffusealpha(1)
 		end,

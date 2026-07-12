@@ -3,18 +3,26 @@
 local NotefieldRenderAfter = 0 --THEME:GetMetric("Player","DrawDistanceAfterTargetsPixels")
 local PreviewDelay = THEME:GetMetric("ScreenSelectMusic", "NotefieldPreviewDelay") or 0.35
 local MaxPreviewSongLengthSeconds = 15 * 60 -- don't decompress/show preview for songs longer than 15 minutes
+local SinglePlayerPreviewYOffset = 240
+local TwoPlayerPreviewYOffset = 180
+local TwoPlayerProfilePreviewXOffset = 213
+local TwoPlayerGuestPreviewXOffset = 293
+local TwoPlayerProfilePreviewZoom = 0.4
+local TwoPlayerGuestPreviewZoom = 1
 
-local function GetCurrentChartIndex(pn, ChartArray)
-    local PlayerSteps = GAMESTATE:GetCurrentSteps(pn)
-    -- Not sure how the previous checks fails at times, so here it is once again
-    if ChartArray then
-        for i=1,#ChartArray do
-            if PlayerSteps == ChartArray[i] then
-                return i
-            end
+local function GetCurrentPreviewSteps(pn, Song)
+    local steps = GAMESTATE:GetCurrentSteps(pn)
+    if not steps or not Song then return nil end
+
+    local ChartArray = Song:GetAllSteps()
+    if not ChartArray then return nil end
+
+    for i=1,#ChartArray do
+        if steps == ChartArray[i] then
+            return steps, i
         end
     end
-    -- If it reaches this point, the selected steps doesn't equal anything
+
     return nil
 end
 
@@ -29,35 +37,21 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
       if GAMESTATE:GetCurrentStyle():GetStyleType() == "StyleType_OnePlayerTwoSides" then
         return 815
       else
-        if PROFILEMAN:IsPersistentProfile(pnNoteField) then
-          return 1080
-        else
-          return 430
-        end
+        return 430
       end
     end
 
     local function NotefieldX()
       -- 2 players joined UI
       if GAMESTATE:GetNumPlayersEnabled() == 2 then
+        local offset = PROFILEMAN:IsPersistentProfile(pn) and TwoPlayerProfilePreviewXOffset or TwoPlayerGuestPreviewXOffset
+
         --player 1
         if pnNoteField == 0 then
-          --with profile
-          if PROFILEMAN:IsPersistentProfile(pn) then
-            return _screen.cx-213
-          --without profile
-          else
-            return _screen.cx-293
-          end
+          return _screen.cx - offset
         --player 2
         elseif pnNoteField == 1 then
-          --with profile
-          if PROFILEMAN:IsPersistentProfile(pn) then
-            return _screen.cx+213
-          --without profile
-          else
-            return _screen.cx+293
-          end
+          return _screen.cx + offset
         end
       -- single player UI (won't differ based on whether a profile is loaded)
       else
@@ -74,13 +68,11 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
     local function NotefieldZoom()
       --2 players
       if GAMESTATE:GetNumPlayersEnabled() == 2 then
-        --with profiles
         if PROFILEMAN:IsPersistentProfile(pn) then
-          return 0.4
-        --without profiles
-        else
-          return 1
+          return TwoPlayerProfilePreviewZoom
         end
+
+        return TwoPlayerGuestPreviewZoom
       --1 player
       else
         --doubles mode
@@ -90,6 +82,18 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
         --default to zoom(1) outside of doubles mode
         return 1
       end
+    end
+
+    local function NotefieldFrameY()
+      if GAMESTATE:GetNumPlayersEnabled() == 2 then
+        return TwoPlayerPreviewYOffset
+      end
+
+      if GAMESTATE:GetCurrentStyle():GetStyleType() ~= "StyleType_OnePlayerTwoSides" then
+        return SinglePlayerPreviewYOffset
+      end
+
+      return 0
     end
 
     local function ReceptorPosNormal()
@@ -144,6 +148,7 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
         FOV=45,
         InitCommand=function(self)
           self:x(NotefieldX())
+          self:y(NotefieldFrameY())
           self:zoom(NotefieldZoom())
         end,
 
@@ -162,12 +167,13 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
         FOV=45,
         InitCommand=function(self)
           self:x(NotefieldX())
+          self:y(NotefieldFrameY())
           self:zoom(NotefieldZoom())
         end,
         Def.NoteField {
             Name = "NotefieldPreview",
             Player = pnNoteField,
-            NoteSkin = GAMESTATE:GetPlayerState(pnNoteField):GetPlayerOptions('ModsLevel_Preferred'):NoteSkin(),
+            NoteSkin = GAMESTATE:GetPlayerState(pn):GetPlayerOptions('ModsLevel_Preferred'):NoteSkin(),
             Chart = Challenge,
             DrawDistanceAfterTargetsPixels = NotefieldRenderAfter,
             DrawDistanceBeforeTargetsPixels = NotefieldRenderBefore(),
@@ -175,13 +181,18 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
             FieldID=-1,
             OnCommand=function(self)
               self:y(NotefieldY):GetPlayerOptions("ModsLevel_Current"):StealthPastReceptors(true, true)
-              local PlayerModsArray = GAMESTATE:GetPlayerState(pnNoteField):GetPlayerOptionsString("ModsLevel_Preferred")
+              local PlayerModsArray = GAMESTATE:GetPlayerState(pn):GetPlayerOptionsString("ModsLevel_Preferred")
               self:GetPlayerOptions("ModsLevel_Current"):FromString(PlayerModsArray):Mini(0)
-              local song = GAMESTATE:GetCurrentSong()
-              if song and song:GetLastSecond() <= MaxPreviewSongLengthSeconds then
-                self:ChangeReload( GAMESTATE:GetCurrentSteps(pnNoteField) )
+              local Song = GAMESTATE:GetCurrentSong()
+              local steps = Song and Song:GetLastSecond() <= MaxPreviewSongLengthSeconds and GAMESTATE:GetCurrentSteps(pn) or nil
+              if steps then
+                self:ChangeReload(steps)
                 self:AutoPlay(true)
+                self:visible(true)
+              else
+                self:visible(false)
               end
+              self:playcommand("Refresh")
             end,
 
             CurrentStepsP1ChangedMessageCommand=function(self) self:playcommand("Refresh") end,
@@ -190,42 +201,53 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
             OptionsListStartMessageCommand=function(self) self:playcommand("Refresh") end,
 
             -- Hide immediately when the wheel starts moving or the song changes mid-scroll
-            PreviousSongMessageCommand=function(self) self:playcommand("ClearPreview") end,
-            NextSongMessageCommand=function(self) self:playcommand("ClearPreview") end,
-            CurrentSongChangedMessageCommand=function(self) self:playcommand("ClearPreview") end,
+            PreviousSongMessageCommand=function(self) self:playcommand("Refresh") end,
+            NextSongMessageCommand=function(self) self:playcommand("Refresh") end,
+            CurrentSongChangedMessageCommand=function(self) self:playcommand("Refresh") end,
 
             ClearPreviewCommand=function(self)
                 self:stoptweening()
                 self:AutoPlay(false)
-                self:SetNoteDataFromLua({})
+                if self:IsGenerated() then
+                    self:SetNoteDataFromLua({})
+                end
             end,
 
             -- Schedule decompress/load after delay; rapid scroll cancels so only the final selection loads
             RefreshCommand=function(self)
+                SL.SelectMusicTelemetry:Pulse("wide.notefield.refresh")
                 self:playcommand("ClearPreview")
                 self:sleep(PreviewDelay)
                 self:queuecommand("DoRefresh")
             end,
             DoRefreshCommand=function(self)
+                SL.SelectMusicTelemetry:Pulse("wide.notefield.do")
                 self:AutoPlay(false)
                 local Song = GAMESTATE:GetCurrentSong()
                 if not Song then return end
                 if Song:GetLastSecond() > MaxPreviewSongLengthSeconds then
-                    self:SetNoteDataFromLua({})
+                    if self:IsGenerated() then
+                        self:SetNoteDataFromLua({})
+                    end
+                    self:visible(false)
                     return
                 end
-                local ChartArray = Song:GetAllSteps()
-                local PlayerModsArray = GAMESTATE:GetPlayerState(pnNoteField):GetPlayerOptionsString("ModsLevel_Preferred")
-                self:GetPlayerOptions("ModsLevel_Current"):FromString(PlayerModsArray):Mini(0)
-
-                local ChartIndex = GetCurrentChartIndex(pnNoteField, ChartArray)
+                if not self:IsGenerated() then return end
+                local _, ChartIndex = GetCurrentPreviewSteps(pn, Song)
                 if not ChartIndex then return end
 
+                local PlayerModsArray = GAMESTATE:GetPlayerState(pn):GetPlayerOptionsString("ModsLevel_Preferred")
+                self:GetPlayerOptions("ModsLevel_Current"):FromString(PlayerModsArray):Mini(0)
+
                 local NoteData = Song:GetNoteData(ChartIndex)
-                if not NoteData then return end
+                if not NoteData then
+                    self:visible(false)
+                    return
+                end
 
                 self:SetNoteDataFromLua({})
                 self:SetNoteDataFromLua(NoteData)
+                self:visible(true)
                 self:AutoPlay(true)
             end
         }

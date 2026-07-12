@@ -19,37 +19,61 @@ local AwardMap = {
 
 local ClearLamp = { color("#0000CC"), color("#990000") }
 
+local lamp_cache = {}
+local function GetSongKey(song)
+	local song_dir = song:GetSongDir()
+	if song_dir ~= nil and #song_dir ~= 0 then return song_dir end
+	return song:GetDisplayFullTitle() or ""
+end
+
 local function GetLamp(song)
 	if not song then return nil end
 	
-	if not GAMESTATE:GetCurrentSteps(pn) then return nil end
+	local current_steps = GAMESTATE:GetCurrentSteps(pn)
+	if not current_steps then return nil end
 	
-	local diff = GAMESTATE:GetCurrentSteps(pn):GetDifficulty()
+	local diff = current_steps:GetDifficulty()
+	local stepstype = GAMESTATE:GetCurrentStyle():GetStepsType()
+	local profile = PROFILEMAN:GetProfile(player)
+	local profileName = profile:GetDisplayName()
+	local cache_key = profileName .. "|" .. GetSongKey(song) .. "|" .. tostring(diff) .. "|" .. tostring(stepstype) .. "|" .. SL.Global.GameMode
+	if lamp_cache[cache_key] ~= nil then
+		return lamp_cache[cache_key].lamp, lamp_cache[cache_key].tap_count
+	end
 	
 	local stepsList = song:GetAllSteps()
 	local steps = nil
 	
 	for check in ivalues(stepsList) do
-		if check:GetDifficulty() == diff and check:GetStepsType() == GAMESTATE:GetCurrentStyle():GetStepsType() then
+		if check:GetDifficulty() == diff and check:GetStepsType() == stepstype then
 			steps = check
 			break
 		end
 	end
 	
-	if steps == nil then return nil end
+	if steps == nil then
+		lamp_cache[cache_key] = {}
+		return nil
+	end
 	
-	local profile = PROFILEMAN:GetProfile(player)
 	local high_score_list = profile:GetHighScoreListIfExists(song, steps)
 
 	-- If no scores then just return.
-	if high_score_list == nil or #high_score_list:GetHighScores() == 0 then
+	if high_score_list == nil then
+		lamp_cache[cache_key] = {}
+		return nil
+	end
+
+	local high_scores = high_score_list:GetHighScores()
+	if #high_scores == 0 then
+		lamp_cache[cache_key] = {}
 		return nil
 	end
 
 	local best_lamp = nil
 	local tap_count = 99
 
-	for score in ivalues(high_score_list:GetHighScores()) do
+	for score in ivalues(high_scores) do
 		local award = score:GetStageAward()
 
 		if award == nil and SL.Global.GameMode == "FA+" and score:GetGrade() ~= "Grade_Failed" then
@@ -90,6 +114,7 @@ local function GetLamp(song)
 		end
 	end
 
+	lamp_cache[cache_key] = { lamp=best_lamp, tap_count=tap_count }
 	return best_lamp,tap_count
 end
 

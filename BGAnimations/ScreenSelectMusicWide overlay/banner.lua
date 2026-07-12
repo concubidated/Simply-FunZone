@@ -1,7 +1,10 @@
 local path = "/"..THEME:GetCurrentThemeDirectory().."Graphics/_FallbackBanners/"..ThemePrefs.Get("VisualStyle")
 local banner_directory = FILEMAN:DoesFileExist(path) and path or THEME:GetPathG("","_FallbackBanners/Arrows")
 
-local SongOrCourse = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong()
+local stable_delay = 0.12
+local function GetSongOrCourse()
+	return GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong()
+end
 
 local bannerWidth = 418
 local bannerHeight = 164
@@ -14,6 +17,7 @@ local t = Def.ActorFrame{
 }
 
 -- fallback banner
+local last_group_banner_path = ""
 t[#t+1] = Def.Sprite{
 	Name="FallbackBanner",
 	Texture=banner_directory.."/banner"..SL.Global.ActiveColorIndex.." (doubleres).png",
@@ -23,10 +27,15 @@ t[#t+1] = Def.Sprite{
 	CurrentCourseChangedMessageCommand=function(self) self:playcommand("Set") end,
 
 	SetCommand=function(self)
+		SL.SelectMusicTelemetry:Pulse("wide.banner.fallback.set")
 		-- if ShowBanners preference is false, always just show the fallback banner
 		-- don't bother assessing whether to draw or not draw
-		if PREFSMAN:GetPreference("ShowBanners") == false then return end
+		if PREFSMAN:GetPreference("ShowBanners") == false then
+			self:visible(true)
+			return
+		end
 
+		local SongOrCourse = GetSongOrCourse()
 		if SongOrCourse and SongOrCourse:HasBanner() then
 			self:visible(false)
 		else
@@ -38,12 +47,28 @@ t[#t+1] = Def.Sprite{
 t[#t+1] = Def.Sprite{
 	Name="GroupBanner",
 	OnCommand=function(self) self:setsize(418,164):visible(false):playcommand("Set") end,
-	CurrentSongChangedMessageCommand=function(self) self:playcommand("Set") end,
-	CurrentCourseChangedMessageCommand=function(self) self:playcommand("Set") end,
+	PreviousSongMessageCommand=function(self) self:stoptweening():visible(false) end,
+	NextSongMessageCommand=function(self) self:stoptweening():visible(false) end,
+	CurrentSongChangedMessageCommand=function(self) self:playcommand("QueueSet") end,
+	CurrentCourseChangedMessageCommand=function(self) self:playcommand("QueueSet") end,
+	QueueSetCommand=function(self)
+		SL.SelectMusicTelemetry:Pulse("wide.banner.group.queue")
+		self:stoptweening()
+		self:sleep(stable_delay)
+		self:queuecommand("Set")
+	end,
 	SetCommand=function(self)
-		SongOrCourse = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong();
-		if SongOrCourse and not SongOrCourse:HasBanner() and HasGroupBanner() then
-			self:Load(GetGroupBanner());
+		SL.SelectMusicTelemetry:Pulse("wide.banner.group.set")
+		local SongOrCourse = GetSongOrCourse()
+		local group_banner_path = ""
+		if SongOrCourse and not SongOrCourse:HasBanner() then
+			group_banner_path = GetGroupBanner() or ""
+		end
+		if group_banner_path ~= "" then
+			if group_banner_path ~= last_group_banner_path then
+				self:Load(group_banner_path)
+				last_group_banner_path = group_banner_path
+			end
 			self:setsize(418,164);
 			self:visible(true);
 		else
@@ -85,7 +110,9 @@ t[#t+1] = Def.ActorFrame{
 
 
 if not GAMESTATE:IsCourseMode() and ThemePrefs.Get("ShowCDTitles") then
+	local last_cdtitle_path = ""
 	t[#t+1] = Def.Sprite {
+		Name="CdTitle",
 		OnCommand=function(self)
 			self:draworder(101)
 			self:playcommand("SetCD")
@@ -93,17 +120,38 @@ if not GAMESTATE:IsCourseMode() and ThemePrefs.Get("ShowCDTitles") then
 		OffCommand=function(self)
 			self:bouncebegin(0.15)
 		end,
-		CurrentSongChangedMessageCommand=function(self) self:playcommand("SetCD") end,
-		SwitchFocusToGroupsMessageCommand=function(self) self:GetChild("CdTitle"):visible(false) end,
+		PreviousSongMessageCommand=function(self) self:stoptweening():visible(false) end,
+		NextSongMessageCommand=function(self) self:stoptweening():visible(false) end,
+		CurrentSongChangedMessageCommand=function(self) self:playcommand("QueueSetCD") end,
+		SwitchFocusToGroupsMessageCommand=function(self) self:stoptweening():visible(false) end,
+		QueueSetCDCommand=function(self)
+			SL.SelectMusicTelemetry:Pulse("wide.cdtitle.queue")
+			self:stoptweening()
+			self:sleep(stable_delay)
+			self:queuecommand("SetCD")
+		end,
 		SetCDCommand=function(self)
-			SongOrCourse = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong()
+			SL.SelectMusicTelemetry:Pulse("wide.cdtitle.set")
+			local SongOrCourse = GetSongOrCourse()
 			if SongOrCourse and SongOrCourse:HasCDTitle() then
 				self:visible(true)
-				self:Load( GAMESTATE:GetCurrentSong():GetCDTitlePath() )
+				local cdtitle_path = SongOrCourse:GetCDTitlePath()
+				if cdtitle_path ~= last_cdtitle_path then
+					self:Load(cdtitle_path)
+					last_cdtitle_path = cdtitle_path
+				end
 				local dim1, dim2 = math.max(self:GetWidth(), self:GetHeight()), math.min(self:GetWidth(), self:GetHeight())
+				if dim2 <= 0 then
+					self:visible(false)
+					return
+				end
 				local ratio = math.max(dim1 / dim2, 2.5)
 
 				local toScale = self:GetWidth() > self:GetHeight() and self:GetWidth() or self:GetHeight()
+				if toScale <= 0 then
+					self:visible(false)
+					return
+				end
 				self:xy((bannerWidth - 30) / 2, (bannerHeight - 30)/ 2)
 				self:zoom(22 / toScale * ratio)
 				self:finishtweening():addrotationy(0):linear(.5):addrotationy(360)

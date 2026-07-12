@@ -14,9 +14,10 @@ local t = Def.ActorFrame{
 	CurrentStepsP1ChangedMessageCommand=function(self) self:queuecommand("RedrawStepsDisplay") end,
 	CurrentStepsP2ChangedMessageCommand=function(self) self:queuecommand("RedrawStepsDisplay") end,
 
-	RedrawStepsDisplayCommand=function(self)
+ 	RedrawStepsDisplayCommand=function(self)
+		SL.SelectMusicTelemetry:Pulse("wide.steps.redraw")
 
-		local song = GAMESTATE:GetCurrentSong()
+ 		local song = GAMESTATE:GetCurrentSong()
 
 		if song then
 			local steps = SongUtil.GetPlayableSteps( song )

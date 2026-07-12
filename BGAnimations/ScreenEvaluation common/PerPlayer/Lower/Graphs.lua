@@ -12,21 +12,29 @@ local function TotalCourseLength()
     -- i use this method instead of TrailUtil.GetTotalSeconds because that leaves unused time at the end in graphs
     local trail = GAMESTATE:GetCurrentTrail(player)
     local t = 0
+    if not trail then return t end
     for te in ivalues(trail:GetTrailEntries()) do
-        t = t + te:GetSong():GetLastSecond()
+        local song = te:GetSong()
+        if song then t = t + song:GetLastSecond() end
     end
 
-    return t / SL.Global.ActiveModifiers.MusicRate
+    local MusicRate = SL.Global.ActiveModifiers.MusicRate or 1
+    if MusicRate == 0 then MusicRate = 1 end
+    return t / MusicRate
 end
 
 local function TotalCourseLengthPlayed()
 	local trail = GAMESTATE:GetCurrentTrail(player)
-	local storage = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1]
+	local storage = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1] or {}
+	if not trail then return -1 end
 	if storage.DeathSecond ~= nil then
 		local deathSecond = storage.DeathSecond
 		local t = 0
+		local MusicRate = SL.Global.ActiveModifiers.MusicRate or 1
+		if MusicRate == 0 then MusicRate = 1 end
 		for te in ivalues(trail:GetTrailEntries()) do
-			t = t + ( te:GetSong():GetLastSecond() / SL.Global.ActiveModifiers.MusicRate )
+			local song = te:GetSong()
+			if song then t = t + ( song:GetLastSecond() / MusicRate ) end
 			if t > deathSecond then break end
 		end
 		return t
@@ -97,25 +105,30 @@ af[#af+1] = Def.GraphDisplay{
 
 		if not GAMESTATE:IsCourseMode() then
 			local steps = GAMESTATE:GetCurrentSteps(player)
-			local timingData = steps:GetTimingData()
-			local firstSecond = math.min(timingData:GetElapsedTimeFromBeat(0), 0)
-			local chartStartSecond = GAMESTATE:GetCurrentSong():GetFirstSecond()
-			local lastSecond = GAMESTATE:GetCurrentSong():GetLastSecond()
-			local duration = lastSecond - firstSecond
+			local song = GAMESTATE:GetCurrentSong()
+			if steps and song then
+				local timingData = steps:GetTimingData()
+				local firstSecond = math.min(timingData:GetElapsedTimeFromBeat(0), 0)
+				local chartStartSecond = song:GetFirstSecond()
+				local lastSecond = song:GetLastSecond()
+				local duration = lastSecond - firstSecond
 
-			-- GraphDisplay starts at chartStartSecond, but the NPS graph
-			-- and the scatter plot start at firstSecond, so we have to
-			-- move the lifebar to the correct offset to align it with the
-			-- NPS graph.
-			local offsetFactor = (chartStartSecond - firstSecond) / duration
-			local offset = GraphWidth * offsetFactor
-			self:addx(offset/2)
-			self:SetWidth(GraphWidth - offset)
+				if duration > 0 then
+					-- GraphDisplay starts at chartStartSecond, but the NPS graph
+					-- and the scatter plot start at firstSecond, so we have to
+					-- move the lifebar to the correct offset to align it with the
+					-- NPS graph.
+					local offsetFactor = (chartStartSecond - firstSecond) / duration
+					local offset = GraphWidth * offsetFactor
+					self:addx(offset/2)
+					self:SetWidth(GraphWidth - offset)
+				end
+			end
 		else
 			local duration = TotalCourseLength()
 			local liveDuration = TotalCourseLengthPlayed()
 
-			if liveDuration ~= -1 then
+			if duration > 0 and liveDuration ~= -1 then
 				self:SetWidth(liveDuration / duration * GraphWidth):x(-GraphWidth/2):horizalign(left)
 			end
 		end
@@ -141,9 +154,9 @@ af[#af+1] = Def.Quad{
 }
 
 local pss = STATSMAN:GetCurStageStats():GetPlayerStageStats(player)
-local storage = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1]
+local storage = SL[pn].Stages.Stats[SL.Global.Stages.PlayedThisGame + 1] or {}
 
-if storage.DeathSecond ~= nil then
+if storage.DeathSecond ~= nil and storage.TotalSeconds and storage.GraphPercentage then
 	local seconds = storage.TotalSeconds
 	local deathSecond = storage.DeathSecond
 	local deathMeasures = storage.DeathMeasures
@@ -154,7 +167,9 @@ if storage.DeathSecond ~= nil then
 	if GAMESTATE:IsCourseMode() then
 		local duration = TotalCourseLength()
 		local liveDuration = TotalCourseLengthPlayed()
-		graphPercentage = graphPercentage * liveDuration / duration
+		if duration > 0 and liveDuration ~= -1 then
+			graphPercentage = graphPercentage * liveDuration / duration
+		end
 	end
 
 	-- If the player failed, check how much time was remaining

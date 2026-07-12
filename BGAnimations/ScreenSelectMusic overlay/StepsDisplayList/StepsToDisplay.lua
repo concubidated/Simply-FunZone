@@ -44,8 +44,13 @@ return function(AllSteps)
 
 	-- both players are joined
 	else
+		local p1Steps = GAMESTATE:GetCurrentSteps(PLAYER_1)
+		local p2Steps = GAMESTATE:GetCurrentSteps(PLAYER_2)
+
+		if not p1Steps or not p2Steps then return StepsToShow end
+
 		-- but neither players' steps is an edit
-		if not GAMESTATE:GetCurrentSteps(PLAYER_1):IsAnEdit() and not GAMESTATE:GetCurrentSteps(PLAYER_2):IsAnEdit() then
+		if not p1Steps:IsAnEdit() and not p2Steps:IsAnEdit() then
 			-- so just return the "normal" stepcharts
 			return StepsToShow
 		end
@@ -93,12 +98,17 @@ return function(AllSteps)
 	else
 
 		local indexP1, indexP2 = nil, nil
+		local p1Steps = GAMESTATE:GetCurrentSteps(PLAYER_1)
+		local p2Steps = GAMESTATE:GetCurrentSteps(PLAYER_2)
+
+		if not p1Steps or not p2Steps then return StepsToShow end
+
 		-- use pairs() instead of ipairs() here because the StepsToShow table
 		-- might not be fully filled in (e.g. missing Beginner and Easy steps at indices 1 and 2)
 		-- and ipairs() will start at 1, increment up, and halt as soon as it hits a nil index
 		for i,stepchart in pairs(StepsToShow) do
-			if stepchart == GAMESTATE:GetCurrentSteps(PLAYER_1) then indexP1 = i end
-			if stepchart == GAMESTATE:GetCurrentSteps(PLAYER_2) then indexP2 = i end
+			if stepchart == p1Steps then indexP1 = i end
+			if stepchart == p2Steps then indexP2 = i end
 		end
 
 		if (indexP1 and indexP2) then

@@ -8,8 +8,8 @@ local w, h
 -- (i.e. potentially a lot) so just show course Scripter or Description
 if GAMESTATE:IsCourseMode() then
 	local course = GAMESTATE:GetCurrentCourse()
-	local scripter = course:GetScripter()
-	local descript = course:GetDescription()
+	local scripter = course and course:GetScripter() or ""
+	local descript = course and course:GetDescription() or ""
 	-- prefer scripter, use description if scripter is empty
 	info = (scripter ~= "" and scripter) or (descript ~= "" and descript) or ""
 
@@ -87,7 +87,8 @@ return Def.ActorFrame{
 		   -- increment the marquee_index, and keep it in bounds
 		   marquee_index = (marquee_index % #info) + 1
 		   -- retrieve the text we want to display
-		   local text = GAMESTATE:GetCurrentSteps(player):IsAutogen() and THEME:GetString("ScreenSelectMusic", "AUTOGEN") or info[marquee_index]
+		   local currentSteps = GAMESTATE:GetCurrentSteps(player)
+		   local text = (currentSteps and currentSteps:IsAutogen()) and THEME:GetString("ScreenSelectMusic", "AUTOGEN") or info[marquee_index]
    
 		   -- set this BitmapText actor to display that text
 		   self:settext( text )

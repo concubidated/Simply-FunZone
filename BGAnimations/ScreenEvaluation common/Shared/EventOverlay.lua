@@ -96,9 +96,9 @@ local BannerAndSong = function(x, y, zoom)
 			if SongOrCourse and SongOrCourse:HasBanner() then
 					--song or course banner, if there is one
 				if GAMESTATE:IsCourseMode() then
-					self:LoadFromCourse( GAMESTATE:GetCurrentCourse() )
+					self:LoadFromCourse( SongOrCourse )
 				else
-					self:LoadFromSong( GAMESTATE:GetCurrentSong() )
+					self:LoadFromSong( SongOrCourse )
 				end
 			end
 			self:setsize(418, 164)
@@ -107,7 +107,8 @@ local BannerAndSong = function(x, y, zoom)
 	af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " Normal")..{
 		Name="SongName",
 		InitCommand=function(self)
-			local songtitle = (GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse():GetDisplayFullTitle()) or GAMESTATE:GetCurrentSong():GetDisplayFullTitle()
+			local SongOrCourse = GAMESTATE:IsCourseMode() and GAMESTATE:GetCurrentCourse() or GAMESTATE:GetCurrentSong()
+			local songtitle = SongOrCourse and SongOrCourse:GetDisplayFullTitle() or ""
 			if songtitle then self:settext(songtitle):zoom(2):maxwidth(500):vertalign("top"):y(90):diffuse(color("1,0.972,0.792,1")) end
 		end
 	}

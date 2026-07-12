@@ -19,7 +19,8 @@ local award = AwardMap[playerStats:GetStageAward()]
 local hasStream = false
 
 -- "I passd with a q though."
-local title = GAMESTATE:GetCurrentSong():GetDisplayFullTitle()
+local song = GAMESTATE:GetCurrentSong()
+local title = song and song:GetDisplayFullTitle() or ""
 if title == "D" then grade = "Grade_Tier99" end
 
 -- QUINT
@@ -31,10 +32,10 @@ if award == 1 and playerStats:GetScore() == 0 then
 end
 
 if not GAMESTATE:IsCourseMode() then
-	streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(ToEnumShortString(player))
-	totalMeasures = streamMeasures + breakMeasures
+	local streamMeasures, breakMeasures = GetTotalStreamAndBreakMeasures(ToEnumShortString(player))
+	local totalMeasures = streamMeasures + breakMeasures
 	
-	if streamMeasures/totalMeasures >= 0.2 then hasStream = true end
+	if totalMeasures > 0 and streamMeasures/totalMeasures >= 0.2 then hasStream = true end
 end
 
 local t = Def.ActorFrame{}
