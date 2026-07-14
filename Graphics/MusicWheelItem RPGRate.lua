@@ -13,7 +13,7 @@ local player = ...
 local pn = ToEnumShortString(player)
 local players = #GAMESTATE:GetHumanPlayers()
 
-local dir 
+local dir
 
 local ar = GetScreenAspectRatio()
 
@@ -25,17 +25,14 @@ local GottaGoFast=function(pn,rate)
 	return clr
 end
 
-ReadRpgFile = function(dir, song)
+local ReadRpgFile = function(dir, song)
 	local path = dir.. "SRPG8.rpg"	
-	local f = RageFileUtil:CreateRageFile()
-	local existing = ""
-	local recordType
 	local rate
-	--local songrecord
 	if FILEMAN:DoesFileExist(path) then
+		local f = RageFileUtil:CreateRageFile()
 		-- Load the current contents of the file if it exists.
 		if f:Open(path, 1) then
-			existing = f:Read()
+			local existing = f:Read()
 			f:Close()
 			f:destroy()
 			-- Check if the song record already exists
@@ -44,12 +41,12 @@ ReadRpgFile = function(dir, song)
 			song = song:gsub("%W","_")
 
 
-			songposition = string.find(existing,song)
+			local songposition = string.find(existing,song)
 			if songposition ~= nil then
 				-- find position of next equals sign
-				equals = string.find(existing,"=",songposition)
+				local equals = string.find(existing,"=",songposition)
 				-- find end of the line
-				newline = string.find(existing,"\n",equals)
+				local newline = string.find(existing,"\n",equals)
 				-- if end of file, get the last 
 				if newline == nil then newline = string.len(existing) end
 				
@@ -58,6 +55,8 @@ ReadRpgFile = function(dir, song)
 				rate = string.sub(rate,1,4)
 				return rate
 			end
+		else
+			f:destroy()
 		end
 	end
 end
@@ -134,7 +133,7 @@ af[#af+1] = LoadFont(ThemePrefs.Get("ThemeFont") .. " numbers")..{
 		self:zoom(zoom)
 		self:xy(x,y)
 		self:settext(params.rate)
-		clr = GottaGoFast(pn,params.rate)
+		local clr = GottaGoFast(pn,params.rate)
 		self:diffuse(color(clr))
 		if players == 2 then 
 			self:addx((pn == "P1" and col*3 or col*1)) 

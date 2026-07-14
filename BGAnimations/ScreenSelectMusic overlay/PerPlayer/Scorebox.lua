@@ -132,6 +132,17 @@ local FormatLeaderboardScore = function(score)
 	return string.format("%.2f", score_value/100)
 end
 
+local CacheScoreboxResponse = function(res, requestCacheKey)
+	local data = res.statusCode == 200 and SL.SafeJsonDecode(res.body) or nil
+	if type(data) == "table" and requestCacheKey and SL.GrooveStats.RequestCache[requestCacheKey] == nil then
+		SL.GrooveStats.RequestCache[requestCacheKey] = {
+			Response=res,
+			Timestamp=GetTimeSinceStart()
+		}
+	end
+	return data
+end
+
 local SetScoreData = function(data_idx, score_idx, rank, name, score, isSelf, isRival, isFail, isEx)
 	all_data[data_idx].has_data = true
 
@@ -188,8 +199,12 @@ local SetScoreDataFromEntry = function(data_idx, score_idx, entry, isEx)
 	return true
 end
 
-local LeaderboardRequestProcessor = function(res, master)
+local LeaderboardRequestProcessor = function(res, params)
+	params = params or {}
+	res = res or {}
+	local master = params.master or params
 	if master == nil then return end
+	if params.requestCacheKey and master.ActiveRequestCacheKey ~= params.requestCacheKey then return end
 
 	if res.error or res.statusCode ~= 200 then
 		local error = res.error and ToEnumShortString(res.error) or nil
@@ -207,7 +222,8 @@ local LeaderboardRequestProcessor = function(res, master)
 	end
 
 	local playerStr = "player"..n
-	local data = SL.SafeJsonDecode(res.body)
+	local data = CacheScoreboxResponse(res, params.requestCacheKey)
+	if type(data) ~= "table" then return end
 
 	-- BoogieStats integration
 	-- Find out whether this chart is ranked on GrooveStats. 
@@ -440,6 +456,7 @@ local af = Def.ActorFrame{
 	CurrentSongChangedMessageCommand=function(self)
 		SL.SelectMusicTelemetry:Pulse("normal.scorebox."..pn..".song")
 		self:finishtweening():visible(false)
+		self.ActiveRequestCacheKey = ""
 		ResetAllData()
 		self.isFirst = true
 	end,
@@ -551,13 +568,13 @@ local af = Def.ActorFrame{
 			local query = {
 				maxLeaderboardResults=NumEntries,
 			}
-			local requestKey = ""
+			local requestCacheKey = ""
 
 			if SL[pn].ApiKey ~= "" and SL[pn].Streams.Hash ~= "" then
 				query["chartHashP"..n] = SL[pn].Streams.Hash
 				headers["x-api-key-player-"..n] = SL[pn].ApiKey
 				sendRequest = true
-				requestKey = SL[pn].Streams.Hash .. "|" .. SL[pn].ApiKey .. "|" .. n
+				requestCacheKey = CRYPTMAN:SHA256String(SL[pn].Streams.Hash .. "|" .. SL[pn].ApiKey .. "|" .. n .. "|scorebox-leaderboards")
 			end
 
 			-- We technically will send two requests in ultrawide versus mode since
@@ -566,11 +583,11 @@ local af = Def.ActorFrame{
 			if sendRequest then
 				if self.IsParsing[1] or self.IsParsing[2] then return end
 				local now = GetTimeSinceStart()
-				if requestKey == self.LastRequestKey and now - self.LastRequestTime < duplicate_request_seconds then
+				if requestCacheKey == self.LastRequestKey and now - self.LastRequestTime < duplicate_request_seconds then
 					SL.SelectMusicTelemetry:Pulse("normal.scorebox.gs.duplicate")
 					return
 				end
-				self.LastRequestKey = requestKey
+				self.LastRequestKey = requestCacheKey
 				self.LastRequestTime = now
 				
 				RemoveStaleCachedRequests()
@@ -597,15 +614,22 @@ local af = Def.ActorFrame{
 					UpdatePathMap(player, SL[pn].Streams.Hash)
 				end
 				
-				SL.SelectMusicTelemetry:Pulse("normal.scorebox.gs.request")
-				self:playcommand("MakeGrooveStatsRequest", {
-					endpoint="player-leaderboards.php?"..NETWORK:EncodeQueryParameters(query),
-					method="GET",
-					headers=headers,
-					timeout=10,
-					callback=LeaderboardRequestProcessor,
-					args=self:GetParent(),
-				})
+				parent.ActiveRequestCacheKey = requestCacheKey
+				local params = {requestCacheKey=requestCacheKey, master=parent}
+				if SL.GrooveStats.RequestCache[requestCacheKey] ~= nil then
+					SL.SelectMusicTelemetry:Pulse("normal.scorebox.gs.cache")
+					LeaderboardRequestProcessor(SL.GrooveStats.RequestCache[requestCacheKey].Response, params)
+				else
+					SL.SelectMusicTelemetry:Pulse("normal.scorebox.gs.request")
+					self:playcommand("MakeGrooveStatsRequest", {
+						endpoint="player-leaderboards.php?"..NETWORK:EncodeQueryParameters(query),
+						method="GET",
+						headers=headers,
+						timeout=10,
+						callback=LeaderboardRequestProcessor,
+						args=params,
+					})
+				end
 			end
 		end
 	},

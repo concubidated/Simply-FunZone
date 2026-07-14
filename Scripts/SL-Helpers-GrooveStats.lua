@@ -59,30 +59,30 @@ end
 --       can of any type as long as the callback knows what to do with it.
 RequestResponseActor = function(x, y)
 	local url_prefix = GrooveStatsURL()
+	local CancelActiveRequest = function(self, leaving_screen)
+		self.request_generation = (self.request_generation or 0) + 1
+		self.request_handler = nil
+		if leaving_screen then
+			self.leaving_screen = true
+		end
+	end
 
 	return Def.ActorFrame{
 		InitCommand=function(self)
 			self.request_time = -1
 			self.timeout = -1
 			self.request_handler = nil
+			self.request_generation = 0
 			self.leaving_screen = false
 			self:xy(x, y)
 		end,
 		CancelCommand=function(self)
-			self.leaving_screen = true
 			-- Cancel the request if we pressed back on the screen.
-			if self.request_handler then
-				self.request_handler:Cancel()
-				self.request_handler = nil
-			end
+			CancelActiveRequest(self, true)
 		end,
 		OffCommand=function(self)
-			self.leaving_screen = true
 			-- Cancel the request if this actor will be destructed soon.
-			if self.request_handler then
-				self.request_handler:Cancel()
-				self.request_handler = nil
-			end
+			CancelActiveRequest(self, true)
 		end,
 		MakeGrooveStatsRequestCommand=function(self, params)
 			self:stoptweening()
@@ -93,8 +93,7 @@ RequestResponseActor = function(x, y)
 
 			-- Cancel any existing requests if we're waiting on one at the moment.
 			if self.request_handler then
-				self.request_handler:Cancel()
-				self.request_handler = nil
+				CancelActiveRequest(self, false)
 			end
 			self:GetChild("Spinner"):visible(true)
 
@@ -105,9 +104,12 @@ RequestResponseActor = function(x, y)
 			local headers = params.headers
 
 			self.timeout = timeout
+			self.request_generation = self.request_generation + 1
+			local request_generation = self.request_generation
+			self.request_handler = true
 
 			-- Attempt to make the request
-			self.request_handler = NETWORK:HttpRequest{
+			NETWORK:HttpRequest{
 				url=url_prefix..endpoint,
 				method=method,
 				body=body,
@@ -115,6 +117,9 @@ RequestResponseActor = function(x, y)
 				connectTimeout=timeout,
 				transferTimeout=timeout,
 				onResponse=function(response)
+					if self.leaving_screen or self.request_generation ~= request_generation then
+						return
+					end
 					self.request_handler = nil
 					-- If we get a permanent error, make sure we "disconnect" from
 					-- GrooveStats until we recheck on ScreenTitleMenu.
@@ -129,10 +134,6 @@ RequestResponseActor = function(x, y)
 						end
 					end
 
-					if self.leaving_screen then
-						return
-					end
-					
 					if params.callback then
 						if not response.error or ToEnumShortString(response.error) ~= "Cancelled" then
 							params.callback(response, params.args)
