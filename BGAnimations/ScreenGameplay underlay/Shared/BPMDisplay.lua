@@ -5,8 +5,17 @@ local MasterPlayerState = GAMESTATE:GetPlayerState(GAMESTATE:GetMasterPlayerNumb
 local so = GAMESTATE:GetSongOptionsObject("ModsLevel_Song")
 
 local bpmDisplay, SongPosition
+local LastSingleBPMText, LastP1BPMText, LastP2BPMText, LastMusicRateText
 
 -- -----------------------------------------------------------------------
+
+local SetTextIfChanged = function(actor, text, last_text)
+	if text ~= last_text then
+		actor:settext(text)
+		return text
+	end
+	return last_text
+end
 
 -- the update function when a single BPM Display is in use
 local UpdateSingleBPM = function(af)
@@ -17,11 +26,11 @@ local UpdateSingleBPM = function(af)
 	MusicRate = so:MusicRate()
 
 	-- BPM Display
-	bpmDisplay:settext( round(SongPosition:GetCurBPS() * 60 * MusicRate) )
+	LastSingleBPMText = SetTextIfChanged(bpmDisplay, round(SongPosition:GetCurBPS() * 60 * MusicRate), LastSingleBPMText)
 
 	-- MusicRate Display
 	MusicRate = string.format("%.2f", MusicRate )
-	MusicRateDisplay:settext( MusicRate ~= "1.00" and MusicRate.."x rate" or "" )
+	LastMusicRateText = SetTextIfChanged(MusicRateDisplay, MusicRate ~= "1.00" and MusicRate.."x rate" or "", LastMusicRateText)
 end
 
 -- the update function when two BPM Displays are needed for divergent TimingData (split BPMs)
@@ -32,11 +41,15 @@ local Update2PBPM = function(self)
 	for player in ivalues(Players) do
 		bpmDisplay = (player == PLAYER_1) and dispP1 or dispP2
 		SongPosition = GAMESTATE:GetPlayerState(player):GetSongPosition()
-		bpmDisplay:settext( round( SongPosition:GetCurBPS() * 60 * MusicRate ) )
+		if player == PLAYER_1 then
+			LastP1BPMText = SetTextIfChanged(bpmDisplay, round( SongPosition:GetCurBPS() * 60 * MusicRate ), LastP1BPMText)
+		else
+			LastP2BPMText = SetTextIfChanged(bpmDisplay, round( SongPosition:GetCurBPS() * 60 * MusicRate ), LastP2BPMText)
+		end
 	end
 
 	MusicRate = string.format("%.2f", MusicRate )
-	MusicRateDisplay:settext( MusicRate ~= "1.00" and MusicRate.."x rate" or "" )
+	LastMusicRateText = SetTextIfChanged(MusicRateDisplay, MusicRate ~= "1.00" and MusicRate.."x rate" or "", LastMusicRateText)
 end
 
 

@@ -23,11 +23,34 @@ t[#t+1] = Def.Sprite{
 	Texture=banner_directory.."/banner"..SL.Global.ActiveColorIndex.." (doubleres).png",
 	InitCommand=function(self) self:setsize(bannerWidth, bannerHeight) end,
 
-	CurrentSongChangedMessageCommand=function(self) self:playcommand("Set") end,
-	CurrentCourseChangedMessageCommand=function(self) self:playcommand("Set") end,
+	PreviousSongMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(true) end,
+	NextSongMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(true) end,
+	SwitchFocusToGroupsMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(true) end,
+	CurrentSongChangedMessageCommand=function(self) self:playcommand("QueueSet") end,
+	CurrentCourseChangedMessageCommand=function(self) self:playcommand("QueueSet") end,
+
+	QueueSetCommand=function(self)
+		self.PendingSongOrCourse = GetSongOrCourse()
+		if not self.PendingSongOrCourse then
+			self:stoptweening():visible(true)
+			return
+		end
+		self:stoptweening()
+		self:sleep(stable_delay)
+		self:queuecommand("Set")
+	end,
 
 	SetCommand=function(self)
 		SL.SelectMusicTelemetry:Pulse("wide.banner.fallback.set")
+		local SongOrCourse = GetSongOrCourse()
+		if not SongOrCourse then
+			self:visible(true)
+			return
+		end
+		if self.PendingSongOrCourse and SongOrCourse ~= self.PendingSongOrCourse then
+			self:visible(false)
+			return
+		end
 		-- if ShowBanners preference is false, always just show the fallback banner
 		-- don't bother assessing whether to draw or not draw
 		if PREFSMAN:GetPreference("ShowBanners") == false then
@@ -35,7 +58,6 @@ t[#t+1] = Def.Sprite{
 			return
 		end
 
-		local SongOrCourse = GetSongOrCourse()
 		if SongOrCourse and SongOrCourse:HasBanner() then
 			self:visible(false)
 		else
@@ -47,11 +69,17 @@ t[#t+1] = Def.Sprite{
 t[#t+1] = Def.Sprite{
 	Name="GroupBanner",
 	OnCommand=function(self) self:setsize(418,164):visible(false):playcommand("Set") end,
-	PreviousSongMessageCommand=function(self) self:stoptweening():visible(false) end,
-	NextSongMessageCommand=function(self) self:stoptweening():visible(false) end,
+	PreviousSongMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(false) end,
+	NextSongMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(false) end,
+	SwitchFocusToGroupsMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(false) end,
 	CurrentSongChangedMessageCommand=function(self) self:playcommand("QueueSet") end,
 	CurrentCourseChangedMessageCommand=function(self) self:playcommand("QueueSet") end,
 	QueueSetCommand=function(self)
+		self.PendingSongOrCourse = GetSongOrCourse()
+		if not self.PendingSongOrCourse then
+			self:stoptweening():visible(false)
+			return
+		end
 		SL.SelectMusicTelemetry:Pulse("wide.banner.group.queue")
 		self:stoptweening()
 		self:sleep(stable_delay)
@@ -60,6 +88,9 @@ t[#t+1] = Def.Sprite{
 	SetCommand=function(self)
 		SL.SelectMusicTelemetry:Pulse("wide.banner.group.set")
 		local SongOrCourse = GetSongOrCourse()
+		if self.PendingSongOrCourse and SongOrCourse ~= self.PendingSongOrCourse then
+			return
+		end
 		local group_banner_path = ""
 		if SongOrCourse and not SongOrCourse:HasBanner() then
 			group_banner_path = GetGroupBanner() or ""
@@ -120,11 +151,16 @@ if not GAMESTATE:IsCourseMode() and ThemePrefs.Get("ShowCDTitles") then
 		OffCommand=function(self)
 			self:bouncebegin(0.15)
 		end,
-		PreviousSongMessageCommand=function(self) self:stoptweening():visible(false) end,
-		NextSongMessageCommand=function(self) self:stoptweening():visible(false) end,
+		PreviousSongMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(false) end,
+		NextSongMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(false) end,
 		CurrentSongChangedMessageCommand=function(self) self:playcommand("QueueSetCD") end,
-		SwitchFocusToGroupsMessageCommand=function(self) self:stoptweening():visible(false) end,
+		SwitchFocusToGroupsMessageCommand=function(self) self.PendingSongOrCourse = nil; self:stoptweening():visible(false) end,
 		QueueSetCDCommand=function(self)
+			self.PendingSongOrCourse = GetSongOrCourse()
+			if not self.PendingSongOrCourse then
+				self:stoptweening():visible(false)
+				return
+			end
 			SL.SelectMusicTelemetry:Pulse("wide.cdtitle.queue")
 			self:stoptweening()
 			self:sleep(stable_delay)
@@ -133,6 +169,9 @@ if not GAMESTATE:IsCourseMode() and ThemePrefs.Get("ShowCDTitles") then
 		SetCDCommand=function(self)
 			SL.SelectMusicTelemetry:Pulse("wide.cdtitle.set")
 			local SongOrCourse = GetSongOrCourse()
+			if self.PendingSongOrCourse and SongOrCourse ~= self.PendingSongOrCourse then
+				return
+			end
 			if SongOrCourse and SongOrCourse:HasCDTitle() then
 				self:visible(true)
 				local cdtitle_path = SongOrCourse:GetCDTitlePath()

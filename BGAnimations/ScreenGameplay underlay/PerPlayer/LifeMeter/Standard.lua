@@ -10,13 +10,16 @@ local IsNotWide = (GetScreenAspectRatio() < 16/9)
 -- get SongPosition specific to this player so that
 -- split BPMs are handled if there are any
 local songposition = GAMESTATE:GetPlayerState(player):GetSongPosition()
-local swoosh, velocity
+local swoosh, velocity, last_velocity
 
 local Update = function(self)
 	if not swoosh then return end
 	velocity = -(songposition:GetCurBPS() * 0.5)
 	if songposition:GetFreeze() or songposition:GetDelay() then velocity = 0 end
-	swoosh:texcoordvelocity(velocity,0)
+	if velocity ~= last_velocity then
+		swoosh:texcoordvelocity(velocity,0)
+		last_velocity = velocity
+	end
 end
 
 local meter = Def.ActorFrame{
