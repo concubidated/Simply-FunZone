@@ -72,6 +72,8 @@ local af = Def.ActorFrame{
 	-- Banner Art
 	LoadActor("./Banner.lua"),
 
+	LoadActor("./StillRiverLuaMusicWheel.lua"),
+
 	-- The grid for the difficulty picker
 	LoadActor("./StepsDisplayList/default.lua"),
 

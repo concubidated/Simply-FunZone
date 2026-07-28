@@ -53,9 +53,6 @@ local af = Def.ActorFrame{
 	-- next, load visual elements; the order of these matters
 	-- i.e. content in PerPlayer/Over needs to draw on top of content from PerPlayer/Under
 
-	-- make the MusicWheel appear to cascade down; this should draw underneath P2's PaneDisplay
-	LoadActor("./MusicWheelAnimation.lua"),
-
 	-- number of steps, jumps, holds, etc., and high scores associated with the current stepchart
 	LoadActor("./PaneDisplay.lua"),
 
@@ -72,6 +69,8 @@ local af = Def.ActorFrame{
 
 	-- Banner Art
 	LoadActor("./Banner.lua"),
+
+	LoadActor("./StillRiverLuaMusicWheel.lua"),
 
 	-- ---------------------------------------------------
 	-- finally, load the overlay used for sorting the MusicWheel (and more), hidden by default

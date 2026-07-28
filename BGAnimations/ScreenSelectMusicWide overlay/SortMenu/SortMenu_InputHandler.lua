@@ -23,6 +23,14 @@ local input = function(event)
 				MESSAGEMAN:Broadcast('Sort', { order = focus.sort_by })
 				MESSAGEMAN:Broadcast('ResetHeaderText')
 				overlay:queuecommand("DirectInputToEngine")
+			elseif focus.kind == "SortLevel" then
+				local musicwheel = screen:GetMusicWheel()
+				musicwheel:ChangeSort("SortOrder_Meter")
+				if type(musicwheel.SetOpenSection) == "function" then
+					musicwheel:SetOpenSection(focus.section)
+				end
+				MESSAGEMAN:Broadcast('ResetHeaderText')
+				overlay:queuecommand("DirectInputToEngine")
 			elseif focus.kind == "Playlist" then
 				local path = THEME:GetPathO("", "Playlists/" .. focus.new_overlay .. ".txt")
 				SONGMAN:SetPreferredSongs(path, --[[isAbsolute=]]true);

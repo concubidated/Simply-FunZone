@@ -26,6 +26,42 @@ local function GetCurrentPreviewSteps(pn, Song)
     return nil
 end
 
+local function GetPreviewRefreshIdentity(pn)
+    local Song = GAMESTATE:GetCurrentSong()
+    local steps = Song and GAMESTATE:GetCurrentSteps(pn) or nil
+    return Song, steps
+end
+
+local function SamePendingPreview(actor, Song, steps)
+    return actor.RefreshPending
+        and actor.PendingSong == Song
+        and actor.PendingSteps == steps
+end
+
+local function SetPendingPreview(actor, Song, steps)
+    actor.RefreshPending = true
+    actor.PendingSong = Song
+    actor.PendingSteps = steps
+end
+
+local function ClearPendingPreview(actor)
+    actor.RefreshPending = false
+    actor.PendingSong = nil
+    actor.PendingSteps = nil
+end
+
+local PreviewModsLevels = { "ModsLevel_Stage", "ModsLevel_Song", "ModsLevel_Current" }
+
+local function ApplyPreviewOptions(actor, pn)
+    local PlayerModsArray = GAMESTATE:GetPlayerState(pn):GetPlayerOptionsString("ModsLevel_Preferred")
+    for _, mods_level in ipairs(PreviewModsLevels) do
+        local options = actor:GetPlayerOptions(mods_level)
+        options:FromString(PlayerModsArray)
+        options:Mini(0)
+        options:StealthPastReceptors(true, true)
+    end
+end
+
 local t = Def.ActorFrame {}
 
 for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
@@ -139,7 +175,6 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
     end
 
     local ReceptorOffset = ReceptorPosReverse() - ReceptorPosNormal()
-    local NotefieldY = (ReceptorPosNormal() + ReceptorPosReverse()) / 2
 
   --upgrade to OutFox LTS 0.4.18 or later for NoteField previews
   if not ActorUtil.IsRegisteredClass("NoteField") then
@@ -180,9 +215,8 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
             YReverseOffsetPixels = ReceptorOffset,
             FieldID=-1,
             OnCommand=function(self)
-              self:y(NotefieldY):GetPlayerOptions("ModsLevel_Current"):StealthPastReceptors(true, true)
-              local PlayerModsArray = GAMESTATE:GetPlayerState(pn):GetPlayerOptionsString("ModsLevel_Preferred")
-              self:GetPlayerOptions("ModsLevel_Current"):FromString(PlayerModsArray):Mini(0)
+              self:y(0)
+              ApplyPreviewOptions(self, pn)
               local Song = GAMESTATE:GetCurrentSong()
               local steps = Song and Song:GetLastSecond() <= MaxPreviewSongLengthSeconds and GAMESTATE:GetCurrentSteps(pn) or nil
               if steps then
@@ -215,16 +249,25 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
 
             -- Schedule decompress/load after delay; rapid scroll cancels so only the final selection loads
             RefreshCommand=function(self)
+                local Song, steps = GetPreviewRefreshIdentity(pn)
+                if SamePendingPreview(self, Song, steps) then return end
+
                 SL.SelectMusicTelemetry:Pulse("wide.notefield.refresh")
                 self:playcommand("ClearPreview")
+                SetPendingPreview(self, Song, steps)
                 self:sleep(PreviewDelay)
                 self:queuecommand("DoRefresh")
             end,
             DoRefreshCommand=function(self)
                 SL.SelectMusicTelemetry:Pulse("wide.notefield.do")
+                local pendingSong = self.PendingSong
+                local pendingSteps = self.PendingSteps
+                ClearPendingPreview(self)
+
                 self:AutoPlay(false)
                 local Song = GAMESTATE:GetCurrentSong()
                 if not Song then return end
+                if pendingSong and Song ~= pendingSong then return end
                 if Song:GetLastSecond() > MaxPreviewSongLengthSeconds then
                     if self:IsGenerated() then
                         self:SetNoteDataFromLua({})
@@ -233,11 +276,11 @@ for i, pn in ipairs(GAMESTATE:GetEnabledPlayers()) do
                     return
                 end
                 if not self:IsGenerated() then return end
-                local _, ChartIndex = GetCurrentPreviewSteps(pn, Song)
+                local steps, ChartIndex = GetCurrentPreviewSteps(pn, Song)
                 if not ChartIndex then return end
+                if pendingSteps and steps ~= pendingSteps then return end
 
-                local PlayerModsArray = GAMESTATE:GetPlayerState(pn):GetPlayerOptionsString("ModsLevel_Preferred")
-                self:GetPlayerOptions("ModsLevel_Current"):FromString(PlayerModsArray):Mini(0)
+                ApplyPreviewOptions(self, pn)
 
                 local NoteData = Song:GetNoteData(ChartIndex)
                 if not NoteData then

@@ -221,6 +221,34 @@ local function AddPlaylists()
 	end
 	return player_sort_options
 end
+local function GetMusicWheel()
+	local screen = SCREENMAN:GetTopScreen()
+	if not screen then return nil end
+	return screen:GetMusicWheel()
+end
+local function CanUseLevelSortOptions()
+	if GAMESTATE:IsCourseMode() then return false end
+
+	local musicwheel = GetMusicWheel()
+	return musicwheel ~= nil
+		and type(musicwheel.GetSectionsForSort) == "function"
+		and type(musicwheel.SetOpenSection) == "function"
+end
+local function AddLevelSortOptions()
+	local musicwheel = GetMusicWheel()
+	if not musicwheel then return {} end
+
+	local level_sort_options = {}
+	local not_available = THEME:GetString("Sort", "NotAvailable")
+	local ok, sections = pcall(function() return musicwheel:GetSectionsForSort("SortOrder_Meter") end)
+	if not ok or type(sections) ~= "table" then return {} end
+	for section in ivalues(sections) do
+		if section ~= "" and section ~= not_available then
+			table.insert(level_sort_options, {"SortLevel", section})
+		end
+	end
+	return level_sort_options
+end
 local function GetChangeableStyles(style)
 	local available_styles = {}
 	-- Allow players to switch from single to double and from double to single
@@ -313,10 +341,27 @@ local wheel_options = {
 			{ {"SortBy", "Popularity"} },
 			{ {"SortBy", "Recent"} },
 			{ {"SortBy", "TopGrades"} },
-			-- these sort methods are not supported by OutFox
-			{ {"SortBy", "Meter"}, not IsOutFox() },
+			{ {"SortBy", "Meter"} },
 			{ {"SortBy", "TopP1Grades"}, PROFILEMAN:IsPersistentProfile(PLAYER_1) and not IsOutFox() },
 			{ {"SortBy", "TopP2Grades"}, PROFILEMAN:IsPersistentProfile(PLAYER_2) and not IsOutFox() },
+		}
+	},
+	-- this submenu contains fixed-difficulty meter sorts.  The main Meter sort follows
+	-- the current selected chart difficulty and supports OutFox float meters.
+	{
+		{"", "CategoryDifficulties"},
+		{
+			{ {"SortBy", "BeginnerMeter"}},
+			{ {"SortBy", "EasyMeter"}},
+			{ {"SortBy", "MediumMeter"}},
+			{ {"SortBy", "HardMeter"}},
+			{ {"SortBy", "ChallengeMeter"}},
+		}
+	},
+	{
+		{"", "CategoryLevels"},
+		{
+			{ AddLevelSortOptions, CanUseLevelSortOptions },
 		}
 	},
 	{
@@ -379,7 +424,12 @@ local t = Def.ActorFrame {
 						local sub_options = {}
 						for j=1, #option[2] do
 							local sub_option = option[2][j]
-							if type(sub_option[2]) == "function" then
+							if type(sub_option[1]) == "function" then
+								local generated_options = sub_option[1]()
+								for k=1, #generated_options do
+									table.insert(filtered_wheel_options, generated_options[k])
+								end
+							elseif type(sub_option[2]) == "function" then
 								if sub_option[2]() then
 									table.insert(filtered_wheel_options, sub_option[1])
 								end
